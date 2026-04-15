@@ -1,0 +1,134 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ────────────────────────────────────────────────────────────
+   CSS Custom Properties (design tokens)
+   ──────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --background:  220 14% 96%;
+    --foreground:  222 47% 11%;
+
+    --card:             0 0% 100%;
+    --card-foreground:  222 47% 11%;
+
+    --popover:            0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary:            224 58% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary:            199 89% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted:            220 14% 92%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent:            199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive:            0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input:  220 13% 91%;
+    --ring:   224 58% 33%;
+
+    --radius: 0.75rem;
+
+    --hero-gradient: linear-gradient(
+      135deg,
+      hsl(224, 58%, 33%) 0%,
+      hsl(199, 89%, 48%) 100%
+    );
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Base resets
+   ──────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  a {
+    @apply transition-colors;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Utility / component classes
+   ──────────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* Gradient background */
+  .hero-gradient {
+    background: var(--hero-gradient);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: var(--hero-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Cards */
+  .stat-card {
+    @apply bg-card rounded-xl p-6 shadow-sm border border-border/50
+           hover:shadow-md transition-shadow;
+  }
+
+  .dashboard-card {
+    @apply bg-card rounded-xl p-6 shadow-sm border border-border/50;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────── */
+
+  /* Primary filled button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center
+           bg-primary text-primary-foreground
+           rounded-md font-medium
+           hover:bg-primary/90
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+           transition-colors cursor-pointer
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* Ghost / outline button */
+  .btn-outline {
+    @apply inline-flex items-center justify-center
+           border border-border bg-transparent text-foreground
+           rounded-md font-medium
+           hover:bg-muted
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+           transition-colors cursor-pointer
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+  }
+}
