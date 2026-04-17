@@ -3,9 +3,8 @@ import { authAPI } from "../services/api";
 
 const AuthContext = createContext(null);
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
+// ======= Helpers ======== //
+
 const loadUserFromStorage = () => {
   try {
     const raw = localStorage.getItem("user");
@@ -25,9 +24,8 @@ const clearSession = () => {
   localStorage.removeItem("user");
 };
 
-// ─────────────────────────────────────────────────────────────
-// Provider
-// ─────────────────────────────────────────────────────────────
+// ======= Provider ========= //
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(loadUserFromStorage);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // ── signUp ─────────────────────────────────────────────────
+  // ======= signUp ========= //
   const signUp = useCallback(async (email, password, name, role) => {
     try {
       const { data } = await authAPI.register({ name, email, password, role });
@@ -68,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // ── signIn ─────────────────────────────────────────────────
+  // ======== signIn ========== // 
   const signIn = useCallback(async (email, password) => {
     try {
       const { data } = await authAPI.login({ email, password });
@@ -84,13 +82,13 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // ── signOut ────────────────────────────────────────────────
+  // ======== signOut ========
   const signOut = useCallback(() => {
     clearSession();
     setUser(null);
   }, []);
 
-  // ── refreshProfile ─────────────────────────────────────────
+  // ========= refreshProfile ======== //
   const refreshProfile = useCallback(async () => {
     try {
       const { data } = await authAPI.getMe();
@@ -115,9 +113,7 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// ─────────────────────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────────────────────
+// ======= Hook ========== //
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");

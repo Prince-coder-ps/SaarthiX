@@ -13,7 +13,7 @@ import Navbar from "../components/Navbar";
 import StatusBadge from "../components/StatusBadge";
 import Loader from "../components/Loader";
 
-// ── Schedule Session Modal ──────────────────────────────────
+// ======== Schedule Session Model ======== //
 function ScheduleModal({ request, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -103,7 +103,7 @@ function ScheduleModal({ request, onClose, onSuccess }) {
   );
 }
 
-// ── Main component ─────────────────────────────────────────
+// ======== Main component ======== //
 export default function AlumniDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate    = useNavigate();
@@ -158,7 +158,7 @@ export default function AlumniDashboard() {
           </p>
         </div>
 
-        {/* ── Stats ───────────────────────────────────────── */}
+        {/* ========= Stats ======== */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
           {[
             { icon: Inbox,        label: "Pending",   value: pending.length,   color: "text-yellow-600", bg: "bg-yellow-50"  },
@@ -178,7 +178,7 @@ export default function AlumniDashboard() {
           ))}
         </div>
 
-        {/* ── Pending Requests ────────────────────────────── */}
+        {/* ========= Pending Requests ========= */}
         <div className="dashboard-card mb-8">
           <h2 className="font-semibold mb-4">
             Incoming Requests
@@ -243,7 +243,7 @@ export default function AlumniDashboard() {
           )}
         </div>
 
-        {/* ── Accepted — awaiting schedule ────────────────── */}
+        {/* ========= Accepted — awaiting schedule ======== */}
         {accepted.length > 0 && (
           <div className="dashboard-card mb-8">
             <h2 className="font-semibold mb-4">Accepted — Schedule a Session</h2>
@@ -274,7 +274,7 @@ export default function AlumniDashboard() {
           </div>
         )}
 
-        {/* ── Upcoming + Completed ─────────────────────────── */}
+        {/* ======= Upcoming + Completed ======== */}
         <div className="grid md:grid-cols-2 gap-6">
           <div className="dashboard-card">
             <h2 className="font-semibold mb-4">Upcoming Sessions</h2>

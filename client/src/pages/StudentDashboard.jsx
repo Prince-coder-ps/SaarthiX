@@ -22,14 +22,14 @@ export default function StudentDashboard() {
   const [domain, setDomain]   = useState("");
   const [sentIds, setSentIds] = useState(new Set()); // optimistic tracking
 
-  // ── Fetch student's own requests ────────────────────────
+  // ======= Fetch student's own requests ========= //
   const { data: requests = [], isLoading: reqLoading } = useQuery({
     queryKey: ["student-requests"],
     enabled: !!user,
     queryFn: () => mentorshipAPI.getStudentRequests().then((r) => r.data.requests),
   });
 
-  // ── Fetch verified alumni list ──────────────────────────
+  // ====== Fetch verified alumni list =======
   const { data: alumniList = [], isLoading: alumniLoading } = useQuery({
     queryKey: ["alumni-list", search, domain],
     enabled: !!user,
@@ -39,12 +39,12 @@ export default function StudentDashboard() {
         .then((r) => r.data.alumni),
   });
 
-  // ── Already-requested alumni IDs (from real data) ───────
+  // ========= Already-requested alumni IDs (from real data) ======== //
   const requestedAlumniIds = new Set(
     requests.map((r) => r.alumniId?._id || r.alumniId)
   );
 
-  // ── Send mentorship request ─────────────────────────────
+  // ======== Send mentorship request ========= //
   const sendRequest = useMutation({
     mutationFn: (alumniId) =>
       mentorshipAPI.sendRequest({
@@ -64,11 +64,11 @@ export default function StudentDashboard() {
     },
   });
 
-  // ── Guards ───────────────────────────────────────────────
+  // ======= Guards ==========
   if (isLoading) return <Loader fullScreen />;
   if (!isAuthenticated) { navigate("/"); return null; }
 
-  // ── Counts ──────────────────────────────────────────────
+  // ======= Counts =========
   const pendingCount   = requests.filter((r) => r.status === "pending").length;
   const scheduledCount = requests.filter((r) => r.status === "scheduled").length;
   const completedCount = requests.filter((r) => r.status === "completed").length;
@@ -89,7 +89,7 @@ export default function StudentDashboard() {
           </p>
         </div>
 
-        {/* ── Stats ─────────────────────────────────────── */}
+        {/* ======= Stats ======= */}
         <div className="grid md:grid-cols-3 gap-4 mb-8">
           {[
             { icon: Clock,        label: "Pending Requests",   value: pendingCount,   color: "text-yellow-600", bg: "bg-yellow-50"  },
@@ -108,7 +108,7 @@ export default function StudentDashboard() {
           ))}
         </div>
 
-        {/* ── My Requests ───────────────────────────────── */}
+        {/* ======= My Requests ======== */}
         <div className="dashboard-card mb-8">
           <h2 className="font-semibold mb-4">My Mentorship Requests</h2>
 
@@ -163,7 +163,7 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {/* ── Alumni Search ─────────────────────────────── */}
+        {/* ======= Alumni Search ======== */}
         <div className="dashboard-card">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <h2 className="font-semibold">Find Alumni Mentors</h2>

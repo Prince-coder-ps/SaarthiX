@@ -2,9 +2,8 @@ const User = require("../models/User");
 const MentorshipRequest = require("../models/MentorshipRequest");
 const Session = require("../models/Session");
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/users
-// ─────────────────────────────────────────────────────────────
+// ===== GET /api/admin/users ======= //
+
 exports.getAllUsers = async (req, res) => {
   try {
     const { role, verified } = req.query;
@@ -19,9 +18,8 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/admin/stats
-// ─────────────────────────────────────────────────────────────
+// ===== GET /api/admin/stats ===== //
+
 exports.getStats = async (req, res) => {
   try {
     const [totalUsers, verifiedAlumni, pendingVerifications, totalRequests, totalSessions] =
@@ -48,9 +46,8 @@ exports.getStats = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/admin/verify/:userId
-// ─────────────────────────────────────────────────────────────
+// ====== PATCH /api/admin/verify/:userId ====== //
+
 exports.verifyAlumni = async (req, res) => {
   try {
     const { verify } = req.body;
@@ -78,9 +75,8 @@ exports.verifyAlumni = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// DELETE /api/admin/users/:userId  (hard delete)
-// ─────────────────────────────────────────────────────────────
+// ====== DELETE /api/admin/users/:userId ====== //
+
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.userId);

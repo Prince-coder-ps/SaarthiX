@@ -47,9 +47,8 @@ exports.createSession = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/sessions/:requestId
-// ─────────────────────────────────────────────────────────────
+// ===== GET /api/sessions/:requestId ====== //
+
 exports.getSessionByRequest = async (req, res) => {
   try {
     const session = await Session.findOne({ requestId: req.params.requestId }).populate({
@@ -70,9 +69,8 @@ exports.getSessionByRequest = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/sessions/:id/status  (mark complete or cancel)
-// ─────────────────────────────────────────────────────────────
+// ===== FETCH /api/sessions/:id/status  (mark complete or cancel) ====== //
+
 exports.updateSessionStatus = async (req, res) => {
   try {
     const { status } = req.body;

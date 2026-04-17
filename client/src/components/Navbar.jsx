@@ -175,16 +175,11 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Main bar ───────────────────────────────────────── */}
+      {/* ======= Main ======= */}
       <nav className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-6xl">
-          {/* Brand */}
-          {/* <Link to="/" className="flex items-center gap-2 font-bold text-primary text-lg shrink-0">
-            <GraduationCap className="h-6 w-6" />
-            AlumniConnect
-          </Link> */}
 
-          {/* change */}
+          {/* Brand(Logo and logoname) */}
           <Link to="/" className="flex items-center gap-2 font-bold text-primary text-lg shrink-0">
   <img src={logo} alt="SaarthiX" className="h-8 w-auto" />
   
@@ -337,7 +332,7 @@ export default function Navbar() {
         </p>
       </Modal>
 
-      {/* ── Register Modal ─────────────────────────────────── */}
+      {/* ======= Register Modal ======== */}
       <Modal open={registerOpen} onClose={() => setRegisterOpen(false)}>
         <h2 className="text-lg font-bold mb-1">Create your account</h2>
         <p className="text-sm text-muted-foreground mb-5">Join the AlumniConnect community</p>

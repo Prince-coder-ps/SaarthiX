@@ -1,9 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-/**
- * protect — verifies JWT and attaches req.user
- */
+/* ====== protect — verifies JWT and attaches req.user ====== */
 exports.protect = async (req, res, next) => {
   try {
     const auth = req.headers.authorization;

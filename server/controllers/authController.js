@@ -21,9 +21,8 @@ const sanitizeUser = (user) => ({
   createdAt: user.createdAt,
 });
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/auth/register
-// ─────────────────────────────────────────────────────────────
+// ===== POST /api/auth/register ===== //
+
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -60,9 +59,8 @@ exports.register = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/auth/login
-// ─────────────────────────────────────────────────────────────
+// ====== POST /api/auth/login ====== //
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -73,7 +71,7 @@ exports.login = async (req, res) => {
         .json({ success: false, message: "Email and password are required." });
     }
 
-    // Include password for comparison (normally excluded by schema)
+    // ===== Include password for comparison ====== //
     const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
     if (!user || !(await user.comparePassword(password))) {
       return res
@@ -89,9 +87,8 @@ exports.login = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/auth/me  (protected)
-// ─────────────────────────────────────────────────────────────
+// ===== GET /api/auth/me ====== //
+
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -101,9 +98,8 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// PUT /api/auth/profile  (protected)
-// ─────────────────────────────────────────────────────────────
+// ===== PUT /api/auth/profile ====== //
+
 exports.updateProfile = async (req, res) => {
   try {
     const { name, batch, domain, company, bio } = req.body;

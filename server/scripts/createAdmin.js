@@ -1,7 +1,7 @@
-/**
- * Run once to create the initial admin account:
- *   node server/scripts/createAdmin.js
+/*
+ * Run once to create the initial admin account
  */
+
 require("dotenv").config({ path: "../.env" });
 const mongoose = require("mongoose");
 const User = require("../models/User");

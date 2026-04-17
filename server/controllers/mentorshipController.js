@@ -1,9 +1,8 @@
 const MentorshipRequest = require("../models/MentorshipRequest");
 const User = require("../models/User");
 
-// ─────────────────────────────────────────────────────────────
-// POST /api/mentorship/request  (student only)
-// ─────────────────────────────────────────────────────────────
+// ===== POST /api/mentorship/request ===== //
+
 exports.sendRequest = async (req, res) => {
   try {
     const { alumniId, message } = req.body;
@@ -47,9 +46,7 @@ exports.sendRequest = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/mentorship/student  (student sees their requests)
-// ─────────────────────────────────────────────────────────────
+// ===== GET /api/mentorship/student ===== //
 exports.getStudentRequests = async (req, res) => {
   try {
     const requests = await MentorshipRequest.find({ studentId: req.user._id })
@@ -62,9 +59,8 @@ exports.getStudentRequests = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/mentorship/alumni  (alumni sees incoming requests)
-// ─────────────────────────────────────────────────────────────
+// ====== GET /api/mentorship/alumni  (alumni sees incoming requests) ===== //
+
 exports.getAlumniRequests = async (req, res) => {
   try {
     const requests = await MentorshipRequest.find({ alumniId: req.user._id })
@@ -77,9 +73,8 @@ exports.getAlumniRequests = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/mentorship/:id/status  (alumni or admin)
-// ─────────────────────────────────────────────────────────────
+// ===== FETCH /api/mentorship/:id/status  (alumni or admin) ======= //
+
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -115,9 +110,8 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/mentorship/alumni-list  (browse verified alumni)
-// ─────────────────────────────────────────────────────────────
+// ===== GET /api/mentorship/alumni-list (browse verified alumni) ===== //
+
 exports.getAlumniList = async (req, res) => {
   try {
     const { search, domain } = req.query;

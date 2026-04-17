@@ -15,7 +15,7 @@ export default function AdminPanel() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
 
-  // ── Data fetching ───────────────────────────────────────
+  // ========= Data fetching ========= //
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["admin-users"],
     enabled: !!user && user.role === "admin",
@@ -28,7 +28,7 @@ export default function AdminPanel() {
     queryFn: () => adminAPI.getStats().then((r) => r.data.stats),
   });
 
-  // ── Mutations ───────────────────────────────────────────
+  // ======= Mutations ======== //
   const verifyMutation = useMutation({
     mutationFn: ({ userId, verify }) => adminAPI.verifyAlumni(userId, verify),
     onSuccess: (_, { verify }) => {
@@ -55,7 +55,7 @@ export default function AdminPanel() {
     }
   };
 
-  // ── Guards ───────────────────────────────────────────────
+  // ======== Guards ========= //
   if (isLoading) return <Loader fullScreen />;
   if (!isAuthenticated || user?.role !== "admin") {
     navigate("/");
@@ -91,7 +91,7 @@ export default function AdminPanel() {
           </p>
         </div>
 
-        {/* ── Stats ────────────────────────────────────────── */}
+        {/* ========== Stats ========= */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
           {[
             { icon: Users,       label: "Total Users",           value: stats.totalUsers           ?? 0, color: "text-primary",    bg: "bg-primary/10"    },
@@ -111,7 +111,7 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {/* ── Verification Queue ───────────────────────────── */}
+        {/* ========= Verification Queue ======== */}
         <div className="dashboard-card mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Alumni Verification Queue</h2>
@@ -180,7 +180,7 @@ export default function AdminPanel() {
           )}
         </div>
 
-        {/* ── All Users ────────────────────────────────────── */}
+        {/* ======== All Users ======== */}
         <div className="dashboard-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">All Users</h2>
