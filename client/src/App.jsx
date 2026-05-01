@@ -29,6 +29,8 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/"                   element={<Index />}            />
+            <Route path="/student-signup"     element={<Index />}            />
+            <Route path="/alumni-signup"      element={<Index />}            />
             <Route path="/student-dashboard"  element={<StudentDashboard />} />
             <Route path="/alumni-dashboard"   element={<AlumniDashboard />}  />
             <Route path="/admin"              element={<AdminPanel />}       />

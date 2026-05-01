@@ -17,9 +17,10 @@ export default function Index() {
       if (user?.role === "alumni") navigate("/alumni-dashboard");
       else if (user?.role === "admin") navigate("/admin");
       else navigate("/student-dashboard");
+    } else {
+      if (role === "student") navigate("/student-signup");
+      else if (role === "alumni") navigate("/alumni-signup");
     }
-    // else — Navbar handles the modal opening via its own state;
-    // clicking the hero buttons just scrolls to the form anchors
   };
 
   return (

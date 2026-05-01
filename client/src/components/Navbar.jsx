@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   GraduationCap,
   User,
@@ -85,6 +85,19 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen]     = useState(false);
   const [regRole, setRegRole]           = useState("student");
   const [submitting, setSubmitting]     = useState(false);
+  const location                        = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === "/student-signup") {
+      setRegRole("student");
+      setRegisterOpen(true);
+      navigate("/", { replace: true });
+    } else if (location.pathname === "/alumni-signup") {
+      setRegRole("alumni");
+      setRegisterOpen(true);
+      navigate("/", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const getDashboardPath = () => {
     if (user?.role === "alumni") return "/alumni-dashboard";
