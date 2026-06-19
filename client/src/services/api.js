@@ -72,4 +72,12 @@ export const adminAPI = {
   deleteUser: (userId) => API.delete(`/admin/users/${userId}`),
 };
 
+// ════════════════════════════════════════════════════════════════
+// Posts
+// ════════════════════════════════════════════════════════════════
+export const postsAPI = {
+  create: (data) => API.post("/posts", data),
+  getAll: () => API.get("/posts"),
+};
+
 export default API;

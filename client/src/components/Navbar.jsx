@@ -122,13 +122,7 @@ export default function Navbar() {
     }
     setLoginOpen(false);
     toast.success("Welcome back!");
-    // Wait one tick for user state to settle, then redirect
-    setTimeout(() => {
-      const stored = JSON.parse(localStorage.getItem("user") || "{}");
-      if (stored.role === "alumni") navigate("/alumni-dashboard");
-      else if (stored.role === "admin") navigate("/admin");
-      else navigate("/student-dashboard");
-    }, 50);
+    navigate("/feed");
   };
 
   // ── Register ─────────────────────────────────────────────
@@ -157,11 +151,7 @@ export default function Navbar() {
     }
     setRegisterOpen(false);
     toast.success("Account created! You are now logged in.");
-    setTimeout(() => {
-      const stored = JSON.parse(localStorage.getItem("user") || "{}");
-      if (stored.role === "alumni") navigate("/alumni-dashboard");
-      else navigate("/student-dashboard");
-    }, 50);
+    navigate("/feed");
   };
 
   const handleSignOut = () => {
@@ -171,11 +161,11 @@ export default function Navbar() {
     toast.success("Signed out successfully.");
   };
 
-  // ── Shared nav links ─────────────────────────────────────
-  const NavLinks = () => (
+  // ── Logged-OUT nav links (landing page sections) ─────────
+  const PublicNavLinks = () => (
     <>
       <a href="/#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-        About
+        Home
       </a>
       <a href="/#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
         How It Works
@@ -183,6 +173,18 @@ export default function Navbar() {
       <a href="/#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
         Testimonials
       </a>
+    </>
+  );
+
+  // ── Logged-IN nav links ───────────────────────────────────
+  const AuthNavLinks = () => (
+    <>
+      <Link to="/feed" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+        Feed
+      </Link>
+      <Link to={getDashboardPath()} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+        Dashboard
+      </Link>
     </>
   );
 
@@ -203,7 +205,7 @@ export default function Navbar() {
 
           {/* Desktop center links */}
           <div className="hidden md:flex items-center gap-6">
-            <NavLinks />
+            {isAuthenticated ? <AuthNavLinks /> : <PublicNavLinks />}
           </div>
 
           {/* Desktop right actions */}
@@ -267,7 +269,7 @@ export default function Navbar() {
         {mobileOpen && (
           <div className="md:hidden border-t border-border bg-card px-4 py-4 space-y-3 animate-fade-in">
             <div className="flex flex-col gap-2 pb-3 border-b border-border">
-              <NavLinks />
+              {isAuthenticated ? <AuthNavLinks /> : <PublicNavLinks />}
             </div>
             {isAuthenticated ? (
               <>

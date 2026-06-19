@@ -2,8 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "./context/AuthContext";
+import PublicRoute from "./components/PublicRoute";
 
 import Index           from "./pages/Index";
+import FeedPage        from "./pages/FeedPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import AlumniDashboard  from "./pages/AlumniDashboard";
 import AdminPanel       from "./pages/AdminPanel";
@@ -28,13 +30,17 @@ export default function App() {
 
         <BrowserRouter>
           <Routes>
-            <Route path="/"                   element={<Index />}            />
-            <Route path="/student-signup"     element={<Index />}            />
-            <Route path="/alumni-signup"      element={<Index />}            />
-            <Route path="/student-dashboard"  element={<StudentDashboard />} />
-            <Route path="/alumni-dashboard"   element={<AlumniDashboard />}  />
-            <Route path="/admin"              element={<AdminPanel />}       />
-            <Route path="/profile"            element={<ProfilePage />}      />
+            {/* Public-only routes — redirect logged-in users to /feed */}
+            <Route path="/"               element={<PublicRoute><Index /></PublicRoute>} />
+            <Route path="/student-signup" element={<PublicRoute><Index /></PublicRoute>} />
+            <Route path="/alumni-signup"  element={<PublicRoute><Index /></PublicRoute>} />
+
+            {/* Protected / shared routes */}
+            <Route path="/feed"              element={<FeedPage />}        />
+            <Route path="/student-dashboard" element={<StudentDashboard />} />
+            <Route path="/alumni-dashboard"  element={<AlumniDashboard />}  />
+            <Route path="/admin"             element={<AdminPanel />}       />
+            <Route path="/profile"           element={<ProfilePage />}      />
 
             {/* 404 */}
             <Route

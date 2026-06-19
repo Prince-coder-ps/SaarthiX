@@ -40,6 +40,7 @@ app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
 app.use("/api/mentorship", require("./routes/mentorshipRoutes"));
 app.use("/api/sessions", require("./routes/sessionRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/posts", require("./routes/postRoutes"));
 
 // ── Health check ─────────────────────────────────────────────
 app.get("/api/health", (_, res) =>
