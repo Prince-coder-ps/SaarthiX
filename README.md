@@ -245,21 +245,6 @@ origin: "https://your-frontend-domain.com"
 
 ---
 
-## 📝 What Was Removed
-
-| Removed | Replaced with |
-|---------|---------------|
-| Supabase client | Axios + Express + MongoDB |
-| Supabase Auth | JWT (jsonwebtoken + bcryptjs) |
-| Lovable OAuth (Google) | Email/password register + login |
-| Lovable branding & meta tags | Clean HTML |
-| `src/integrations/supabase/` | `src/services/api.js` |
-| `src/integrations/lovable/` | `src/context/AuthContext.jsx` |
-| All mock/static data | Real MongoDB queries |
-| `.tsx` files | `.jsx` (no TypeScript complexity on client) |
-
----
-
 ## 🛠️ Tech Stack
 
 | Layer     | Technology                        |
