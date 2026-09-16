@@ -20,8 +20,12 @@ const mentorshipRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected", "scheduled", "completed"],
+      enum: ["pending", "accepted", "rejected", "cancelled", "scheduled", "completed"],
       default: "pending",
+    },
+    rejectedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

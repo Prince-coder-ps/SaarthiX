@@ -8,7 +8,7 @@ const User = require("../models/User");
 
 const ADMIN = {
   name: "Admin",
-  email: "admin@alumniconnect.com",
+  email: "admin@saarthix.com",
   password: "Admin@1234",
   role: "admin",
 };

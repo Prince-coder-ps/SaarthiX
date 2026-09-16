@@ -189,9 +189,9 @@ export default function Index() {
       {/* ========= About ========== */}
       <section id="about" className="py-20 bg-card">
         <div className="container mx-auto px-4 max-w-3xl text-center">
-          <h2 className="text-3xl font-bold mb-4">About AlumniConnect</h2>
+          <h2 className="text-3xl font-bold mb-4">About SaarthiX</h2>
           <p className="text-muted-foreground leading-relaxed">
-            AlumniConnect is a structured mentorship platform designed to bridge
+            SaarthiX is a structured mentorship platform designed to bridge
             the gap between current students and graduated alumni. Unlike social
             networks, we focus on purposeful, workflow-driven mentorship with
             verified profiles, scheduled sessions, and feedback loops — all

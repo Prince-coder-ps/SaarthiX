@@ -10,8 +10,9 @@ import { useAuth } from "../context/AuthContext";
 import { mentorshipAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 import StatusBadge from "../components/StatusBadge";
-import MentorshipStepper from "../components/MentorshipStepper";
 import Loader from "../components/Loader";
+
+const REJECTION_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, matches backend
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -40,8 +41,21 @@ export default function StudentDashboard() {
   });
 
   // ========= Already-requested alumni IDs (from real data) ======== //
+  // pending/accepted/scheduled/completed always block a new request.
+  // rejected blocks only until the 7-day cooldown passes; cancelled never blocks.
+  const now = new Date();
   const requestedAlumniIds = new Set(
-    requests.map((r) => r.alumniId?._id || r.alumniId)
+    requests
+      .filter((r) => {
+        if (["pending", "accepted", "scheduled", "completed"].includes(r.status)) return true;
+        if (r.status === "rejected") {
+          if (!r.rejectedAt) return false;
+          const cooldownEndsAt = new Date(new Date(r.rejectedAt).getTime() + REJECTION_COOLDOWN_MS);
+          return cooldownEndsAt > now;
+        }
+        return false; // cancelled
+      })
+      .map((r) => r.alumniId?._id || r.alumniId)
   );
 
   // ======== Send mentorship request ========= //
@@ -64,6 +78,18 @@ export default function StudentDashboard() {
     },
   });
 
+  // ======== Cancel a pending request ========= //
+  const cancelRequest = useMutation({
+    mutationFn: (requestId) => mentorshipAPI.updateStatus(requestId, "cancelled"),
+    onSuccess: () => {
+      toast.success("Request cancelled.");
+      queryClient.invalidateQueries({ queryKey: ["student-requests"] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to cancel request.");
+    },
+  });
+
   // ======= Guards ==========
   if (isLoading) return <Loader fullScreen />;
   if (!isAuthenticated) { navigate("/"); return null; }
@@ -72,9 +98,6 @@ export default function StudentDashboard() {
   const pendingCount   = requests.filter((r) => r.status === "pending").length;
   const scheduledCount = requests.filter((r) => r.status === "scheduled").length;
   const completedCount = requests.filter((r) => r.status === "completed").length;
-
-  // Most recent request for the stepper
-  const latestRequest = requests[0];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -124,41 +147,89 @@ export default function StudentDashboard() {
           ) : (
             <>
               <div className="space-y-3">
-                {requests.map((r) => (
-                  <div
-                    key={r._id}
-                    className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg bg-background border border-border gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold shrink-0">
-                        {(r.alumniId?.name || "A").charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{r.alumniId?.name || "Alumni"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {r.alumniId?.domain || "—"} • {r.alumniId?.company || "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(r.createdAt).toLocaleDateString()}
-                      </span>
-                      <StatusBadge status={r.status} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                {requests.map((r) => {
+                  const alumniId = r.alumniId?._id || r.alumniId;
+                  const cooldownEndsAt =
+                    r.status === "rejected" && r.rejectedAt
+                      ? new Date(new Date(r.rejectedAt).getTime() + REJECTION_COOLDOWN_MS)
+                      : null;
+                  const cooldownActive = cooldownEndsAt && cooldownEndsAt > now;
 
-              {/* Progress stepper for latest request */}
-              {latestRequest && (
-                <div className="mt-6 pt-5 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground mb-3">
-                    Latest request progress
-                  </p>
-                  <MentorshipStepper currentStep={latestRequest.status} />
-                </div>
-              )}
+                  return (
+                    <div
+                      key={r._id}
+                      className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg bg-background border border-border gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        {r.alumniId?.avatarUrl ? (
+                          <img
+                            src={r.alumniId.avatarUrl}
+                            alt={r.alumniId?.name || "Alumni"}
+                            className="h-9 w-9 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-semibold shrink-0">
+                            {(r.alumniId?.name || "A").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-sm">{r.alumniId?.name || "Alumni"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {r.alumniId?.domain || "—"} • {r.alumniId?.company || "—"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">
+                          Sent {new Date(r.createdAt).toLocaleDateString()}
+                        </span>
+                        <StatusBadge status={r.status} />
+
+                        {/* Relevant action per card */}
+                        {r.status === "pending" && (
+                          <button
+                            className="text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50"
+                            disabled={cancelRequest.isPending}
+                            onClick={() => {
+                              if (window.confirm(`Cancel your request to ${r.alumniId?.name || "this alumni"}?`)) {
+                                cancelRequest.mutate(r._id);
+                              }
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+
+                        {r.status === "cancelled" && alumniId && (
+                          <button
+                            className="text-xs px-2.5 py-1 rounded-md btn-primary disabled:opacity-50"
+                            disabled={sendRequest.isPending}
+                            onClick={() => sendRequest.mutate(alumniId)}
+                          >
+                            Request Again
+                          </button>
+                        )}
+
+                        {r.status === "rejected" && cooldownActive && (
+                          <span className="text-xs text-muted-foreground">
+                            Retry after {cooldownEndsAt.toLocaleDateString()}
+                          </span>
+                        )}
+
+                        {r.status === "rejected" && !cooldownActive && alumniId && (
+                          <button
+                            className="text-xs px-2.5 py-1 rounded-md btn-primary disabled:opacity-50"
+                            disabled={sendRequest.isPending}
+                            onClick={() => sendRequest.mutate(alumniId)}
+                          >
+                            Request Again
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </>
           )}
         </div>

@@ -9,7 +9,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2 font-bold text-lg mb-3">
               <GraduationCap className="h-6 w-6" />
-              AlumniConnect
+              SaathiX
             </div>
             <p className="text-sm opacity-80">
               A structured mentorship platform connecting students with verified
@@ -67,7 +67,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm opacity-80">
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 shrink-0" />
-                connect@alumniplatform.edu
+                connect@sarrthix.edu
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 shrink-0" />
@@ -78,7 +78,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-primary-foreground/20 mt-8 pt-6 text-center text-sm opacity-60">
-          © {new Date().getFullYear()} AlumniConnect. All rights reserved.
+          © {new Date().getFullYear()} SaarthiX. All rights reserved.
         </div>
       </div>
     </footer>
