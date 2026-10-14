@@ -5,14 +5,83 @@ import { toast } from "sonner";
 import {
   Clock, CheckCircle, Send, Search,
   CalendarDays, Loader2, GraduationCap,
+  Calendar, Video, X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { mentorshipAPI } from "../services/api";
+import { mentorshipAPI, sessionAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 import StatusBadge from "../components/StatusBadge";
 import Loader from "../components/Loader";
+import SessionInfo from "../components/SessionInfo";
+import { getSessionDateTimeParts, isSafeHttpsUrl } from "../utils/sessionView";
 
 const REJECTION_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, matches backend
+
+function SessionModal({ requestId, onClose }) {
+  const { data: session, isLoading, error } = useQuery({
+    queryKey: ["session", requestId],
+    queryFn: () => sessionAPI.getByRequest(requestId).then((res) => res.data.session),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="bg-card rounded-xl shadow-xl p-6 w-full max-w-md animate-fade-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" /> Session Details
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <Loader />
+        ) : error || !session ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Session details not available.</p>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 bg-muted/40 p-3 rounded-lg">
+              <div>
+                <p className="text-xs text-muted-foreground">Date</p>
+                <p className="font-medium">{getSessionDateTimeParts(session).date}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Time</p>
+                <p className="font-medium">{getSessionDateTimeParts(session).time}</p>
+              </div>
+            </div>
+
+            {session.status === "scheduled" && (
+              isSafeHttpsUrl(session.meetLink) ? (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">Meeting Link</p>
+                  <a
+                    href={session.meetLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary text-xs py-2 px-3 flex items-center justify-center gap-2 w-full"
+                  >
+                    <Video className="h-4 w-4" /> Join Meeting
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No meeting link provided yet.</p>
+              )
+            )}
+
+            {session.notes && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Notes / Agenda</p>
+                <p className="p-3 bg-background border border-border rounded-md text-xs whitespace-pre-wrap">{session.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -22,6 +91,7 @@ export default function StudentDashboard() {
   const [search, setSearch]   = useState("");
   const [domain, setDomain]   = useState("");
   const [sentIds, setSentIds] = useState(new Set()); // optimistic tracking
+  const [selectedSessionRequestId, setSelectedSessionRequestId] = useState(null);
 
   // ======= Fetch student's own requests ========= //
   const { data: requests = [], isLoading: reqLoading } = useQuery({
@@ -103,12 +173,19 @@ export default function StudentDashboard() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
+      {selectedSessionRequestId && (
+        <SessionModal
+          requestId={selectedSessionRequestId}
+          onClose={() => setSelectedSessionRequestId(null)}
+        />
+      )}
+
       <div className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Student Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Hello, {user.name} 👋 — find your mentor and grow your career.
+            Hello, {user?.name || "Student"} 👋 — find your mentor and grow your career.
           </p>
         </div>
 
@@ -177,13 +254,24 @@ export default function StudentDashboard() {
                           <p className="text-xs text-muted-foreground">
                             {r.alumniId?.domain || "—"} • {r.alumniId?.company || "—"}
                           </p>
+                          <div className="mt-2"><SessionInfo request={r} /></div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-muted-foreground">
                           Sent {new Date(r.createdAt).toLocaleDateString()}
                         </span>
                         <StatusBadge status={r.status} />
+
+                        {/* Session details view for scheduled and completed sessions */}
+                        {(r.status === "scheduled" || r.status === "completed") && (
+                          <button
+                            className="text-xs px-2.5 py-1 rounded-md border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-1 font-medium"
+                            onClick={() => setSelectedSessionRequestId(r._id)}
+                          >
+                            <Video className="h-3.5 w-3.5" /> Session Details
+                          </button>
+                        )}
 
                         {/* Relevant action per card */}
                         {r.status === "pending" && (
@@ -290,10 +378,10 @@ export default function StudentDashboard() {
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-semibold shrink-0">
-                        {a.name.charAt(0).toUpperCase()}
+                        {(a.name || "A").charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{a.name}</p>
+                        <p className="font-medium text-sm truncate">{a.name || "Alumni"}</p>
                         <p className="text-xs text-muted-foreground">
                           {a.company || "—"} • Batch {a.batch || "—"}
                         </p>

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "./context/AuthContext";
 import PublicRoute from "./components/PublicRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import Index           from "./pages/Index";
 import FeedPage        from "./pages/FeedPage";
@@ -36,11 +37,11 @@ export default function App() {
             <Route path="/alumni-signup"  element={<PublicRoute><Index /></PublicRoute>} />
 
             {/* Protected / shared routes */}
-            <Route path="/feed"              element={<FeedPage />}        />
-            <Route path="/student-dashboard" element={<StudentDashboard />} />
-            <Route path="/alumni-dashboard"  element={<AlumniDashboard />}  />
-            <Route path="/admin"             element={<AdminPanel />}       />
-            <Route path="/profile"           element={<ProfilePage />}      />
+            <Route path="/feed"              element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
+            <Route path="/student-dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/alumni-dashboard"  element={<ProtectedRoute allowedRoles={["alumni"]}><AlumniDashboard /></ProtectedRoute>} />
+            <Route path="/admin"             element={<ProtectedRoute allowedRoles={["admin"]}><AdminPanel /></ProtectedRoute>} />
+            <Route path="/profile"           element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
             {/* 404 */}
             <Route

@@ -23,14 +23,37 @@ const sanitizeUser = (user) => ({
 
 // ===== POST /api/auth/register ===== //
 
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
 
-    if (!name || !email || !password) {
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
       return res
         .status(400)
         .json({ success: false, message: "Name, email and password are required." });
+    }
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Please provide a valid email." });
+    }
+
+    if (trimmedName.length > 100) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Name cannot exceed 100 characters." });
     }
 
     if (password.length < 6) {
@@ -42,37 +65,48 @@ exports.register = async (req, res) => {
     const allowedRoles = ["student", "alumni"];
     const assignedRole = allowedRoles.includes(role) ? role : "student";
 
-    const exists = await User.findOne({ email: email.toLowerCase() });
+    const exists = await User.findOne({ email: trimmedEmail });
     if (exists) {
       return res
         .status(409)
         .json({ success: false, message: "An account with this email already exists." });
     }
 
-    const user = await User.create({ name, email, password, role: assignedRole });
+    const user = await User.create({
+      name: trimmedName,
+      email: trimmedEmail,
+      password,
+      role: assignedRole,
+    });
     const token = signToken(user._id);
 
     res.status(201).json({ success: true, token, user: sanitizeUser(user) });
   } catch (err) {
-    console.error("Register error:", err);
-    res.status(500).json({ success: false, message: "Registration failed. Please try again." });
+    next(err);
   }
 };
 
 // ====== POST /api/auth/login ====== //
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return res
         .status(400)
         .json({ success: false, message: "Email and password are required." });
     }
 
+    const trimmedEmail = email.trim().toLowerCase();
+
     // ===== Include password for comparison ====== //
-    const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
+    const user = await User.findOne({ email: trimmedEmail }).select("+password");
     if (!user || !(await user.comparePassword(password))) {
       return res
         .status(401)
@@ -82,46 +116,54 @@ exports.login = async (req, res) => {
     const token = signToken(user._id);
     res.json({ success: true, token, user: sanitizeUser(user) });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ success: false, message: "Login failed. Please try again." });
+    next(err);
   }
 };
 
 // ===== GET /api/auth/me ====== //
 
-exports.getMe = async (req, res) => {
+exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
     res.json({ success: true, user: sanitizeUser(user) });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 };
 
 // ===== PUT /api/auth/profile ====== //
 
-exports.updateProfile = async (req, res) => {
+exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, batch, domain, company, bio } = req.body;
+    const { name, batch, domain, company, bio, avatarUrl } = req.body;
 
-    if (!name || name.trim().length === 0) {
+    if (name !== undefined && (typeof name !== "string" || !name.trim())) {
       return res.status(400).json({ success: false, message: "Name cannot be empty." });
     }
 
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (batch !== undefined) updates.batch = typeof batch === "string" && batch.trim() ? batch.trim() : null;
+    if (domain !== undefined) updates.domain = typeof domain === "string" && domain.trim() ? domain.trim() : null;
+    if (company !== undefined) updates.company = typeof company === "string" && company.trim() ? company.trim() : null;
+    if (bio !== undefined) updates.bio = typeof bio === "string" && bio.trim() ? bio.trim() : null;
+    if (avatarUrl !== undefined) updates.avatarUrl = typeof avatarUrl === "string" && avatarUrl.trim() ? avatarUrl.trim() : null;
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      {
-        name: name.trim(),
-        batch: batch?.trim() || null,
-        domain: domain?.trim() || null,
-        company: company?.trim() || null,
-        bio: bio?.trim() || null,
-      },
+      updates,
       { new: true, runValidators: true }
     );
 
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
     res.json({ success: true, user: sanitizeUser(user) });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    next(err);
   }
 };

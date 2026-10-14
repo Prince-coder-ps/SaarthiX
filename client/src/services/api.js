@@ -16,14 +16,20 @@ API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── Auto-logout on 401 ────────────────────────────────────────
+// ── Auto-logout on 401 (for expired/invalid sessions, excluding auth attempts) ─
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRequest =
+      error.config?.url?.includes("/auth/login") ||
+      error.config?.url?.includes("/auth/register");
+
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.href = "/";
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
     }
     return Promise.reject(error);
   }
@@ -78,6 +84,15 @@ export const adminAPI = {
 export const postsAPI = {
   create: (data) => API.post("/posts", data),
   getAll: () => API.get("/posts"),
+};
+
+// ════════════════════════════════════════════════════════════════
+// Notifications
+// ════════════════════════════════════════════════════════════════
+export const notificationAPI = {
+  list: (params) => API.get("/notifications", { params }),
+  markRead: (id) => API.patch(`/notifications/${id}/read`),
+  markAllRead: () => API.patch("/notifications/read-all"),
 };
 
 export default API;

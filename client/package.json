@@ -1,12 +1,13 @@
 {
-  "name": "alumni-connect-client",
+  "name": "saarthix-client",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.45.0",

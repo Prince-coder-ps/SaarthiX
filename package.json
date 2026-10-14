@@ -1,12 +1,16 @@
 {
-  "name": "alumni-connect",
+  "name": "saarthix",
   "version": "1.0.0",
-  "description": "Alumni Connect - MERN Stack Mentorship Platform",
+  "description": "SaarthiX — MERN alumni-student mentorship platform",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm run dev",
+    "start": "node server/server.js",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm run build"
   },

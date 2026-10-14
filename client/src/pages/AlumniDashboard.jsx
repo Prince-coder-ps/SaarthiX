@@ -5,13 +5,82 @@ import { toast } from "sonner";
 import {
   Inbox, CalendarDays, History,
   CheckCircle, XCircle, Loader2,
-  Calendar, Clock, X,
+  Calendar, Clock, X, Video,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { mentorshipAPI, sessionAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 import StatusBadge from "../components/StatusBadge";
 import Loader from "../components/Loader";
+import SessionInfo from "../components/SessionInfo";
+import { getSessionDateTimeParts, isSafeHttpsUrl } from "../utils/sessionView";
+
+// ======== View Session Modal ======== //
+function SessionModal({ requestId, onClose }) {
+  const { data: session, isLoading, error } = useQuery({
+    queryKey: ["session", requestId],
+    queryFn: () => sessionAPI.getByRequest(requestId).then((res) => res.data.session),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="bg-card rounded-xl shadow-xl p-6 w-full max-w-md animate-fade-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" /> Session Details
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <Loader />
+        ) : error || !session ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Session details not available.</p>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 bg-muted/40 p-3 rounded-lg">
+              <div>
+                <p className="text-xs text-muted-foreground">Date</p>
+                <p className="font-medium">{getSessionDateTimeParts(session).date}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Time</p>
+                <p className="font-medium">{getSessionDateTimeParts(session).time}</p>
+              </div>
+            </div>
+
+            {session.status === "scheduled" && (
+              isSafeHttpsUrl(session.meetLink) ? (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">Meeting Link</p>
+                  <a
+                    href={session.meetLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary text-xs py-2 px-3 flex items-center justify-center gap-2 w-full"
+                  >
+                    <Video className="h-4 w-4" /> Join Meeting
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No meeting link provided yet.</p>
+              )
+            )}
+
+            {session.notes && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Notes / Agenda</p>
+                <p className="p-3 bg-background border border-border rounded-md text-xs whitespace-pre-wrap">{session.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ======== Schedule Session Model ======== //
 function ScheduleModal({ request, onClose, onSuccess }) {
@@ -26,8 +95,9 @@ function ScheduleModal({ request, onClose, onSuccess }) {
         requestId: request._id,
         date:      fd.get("date"),
         time:      fd.get("time"),
+        timeZone:  Intl.DateTimeFormat().resolvedOptions().timeZone, // zone the time was typed in
         notes:     fd.get("notes"),
-        meetLink:  fd.get("meetLink"),
+        meetLink:  (fd.get("meetLink") || "").trim(),
       });
       toast.success("Session scheduled!");
       onSuccess();
@@ -79,6 +149,7 @@ function ScheduleModal({ request, onClose, onSuccess }) {
             <label className="text-sm font-medium block mb-1">Meet Link (optional)</label>
             <input
               name="meetLink" type="url" placeholder="https://meet.google.com/..."
+              pattern="https://.*" title="Enter a valid https:// link"
               className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -109,6 +180,7 @@ export default function AlumniDashboard() {
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
   const [scheduleFor, setScheduleFor] = useState(null);
+  const [viewSessionRequestId, setViewSessionRequestId] = useState(null);
 
   const { data: requests = [], isLoading: reqLoading } = useQuery({
     queryKey: ["alumni-requests"],
@@ -145,7 +217,17 @@ export default function AlumniDashboard() {
         <ScheduleModal
           request={scheduleFor}
           onClose={() => setScheduleFor(null)}
-          onSuccess={() => queryClient.invalidateQueries({ queryKey: ["alumni-requests"] })}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["alumni-requests"] });
+            queryClient.invalidateQueries({ queryKey: ["session"] });
+          }}
+        />
+      )}
+
+      {viewSessionRequestId && (
+        <SessionModal
+          requestId={viewSessionRequestId}
+          onClose={() => setViewSessionRequestId(null)}
         />
       )}
 
@@ -154,7 +236,7 @@ export default function AlumniDashboard() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Alumni Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Hello, {user.name} 👋 — manage your mentorship sessions.
+            Hello, {user?.name || "Alumni"} 👋 — manage your mentorship sessions.
           </p>
         </div>
 
@@ -258,7 +340,7 @@ export default function AlumniDashboard() {
                       {(r.studentId?.name || "S").charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-sm">{r.studentId?.name}</p>
+                      <p className="font-medium text-sm">{r.studentId?.name || "Student"}</p>
                       <p className="text-xs text-muted-foreground">{r.studentId?.batch || "—"}</p>
                     </div>
                   </div>
@@ -287,19 +369,27 @@ export default function AlumniDashboard() {
                 {upcoming.map((r) => (
                   <div
                     key={r._id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-background border border-border"
+                    className="flex items-center justify-between p-3 rounded-lg bg-background border border-border gap-2"
                   >
                     <div>
                       <p className="font-medium text-sm">{r.studentId?.name || "Student"}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(r.updatedAt).toLocaleDateString()}
                       </p>
+                      <div className="mt-2"><SessionInfo request={r} /></div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        className="text-xs px-2 py-1 rounded-md border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-1 font-medium"
+                        onClick={() => setViewSessionRequestId(r._id)}
+                      >
+                        <Video className="h-3.5 w-3.5" /> Details
+                      </button>
                       <StatusBadge status={r.status} />
                       <button
-                        className="text-xs text-green-700 border border-green-200 bg-green-50 rounded px-2 py-1 hover:bg-green-100 transition-colors"
+                        className="text-xs text-green-700 border border-green-200 bg-green-50 rounded px-2 py-1 hover:bg-green-100 transition-colors disabled:opacity-50"
                         onClick={() => updateStatus.mutate({ id: r._id, status: "completed" })}
+                        disabled={updateStatus.isPending}
                       >
                         Mark Done
                       </button>
@@ -321,7 +411,7 @@ export default function AlumniDashboard() {
                 {completed.map((r) => (
                   <div
                     key={r._id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-background border border-border"
+                    className="flex items-center justify-between p-3 rounded-lg bg-background border border-border gap-2"
                   >
                     <div>
                       <p className="font-medium text-sm">{r.studentId?.name || "Student"}</p>
@@ -329,7 +419,15 @@ export default function AlumniDashboard() {
                         {new Date(r.updatedAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <StatusBadge status={r.status} />
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="text-xs px-2 py-1 rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors flex items-center gap-1 font-medium"
+                        onClick={() => setViewSessionRequestId(r._id)}
+                      >
+                        <Video className="h-3.5 w-3.5" /> Details
+                      </button>
+                      <StatusBadge status={r.status} />
+                    </div>
                   </div>
                 ))}
               </div>

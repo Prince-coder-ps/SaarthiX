@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 import logo from "/logo.png";
 
 // ─── tiny helpers ────────────────────────────────────────────
@@ -214,6 +215,7 @@ export default function Navbar() {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : isAuthenticated ? (
               <>
+                <NotificationBell />
                 <Link
                   to={getDashboardPath()}
                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -255,14 +257,17 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile toggle */}
-          <button
-            className="md:hidden p-1 rounded-md hover:bg-muted transition-colors"
-            onClick={() => setMobileOpen((o) => !o)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+          {/* Mobile bell + toggle */}
+          <div className="md:hidden flex items-center gap-1">
+            {isAuthenticated && <NotificationBell onNavigate={() => setMobileOpen(false)} />}
+            <button
+              className="p-1 rounded-md hover:bg-muted transition-colors"
+              onClick={() => setMobileOpen((o) => !o)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile dropdown */}
@@ -350,7 +355,7 @@ export default function Navbar() {
       {/* ======= Register Modal ======== */}
       <Modal open={registerOpen} onClose={() => setRegisterOpen(false)}>
         <h2 className="text-lg font-bold mb-1">Create your account</h2>
-        <p className="text-sm text-muted-foreground mb-5">Join the AlumniConnect community</p>
+        <p className="text-sm text-muted-foreground mb-5">Join the SaarthiX community</p>
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="text-sm font-medium block mb-1">Full Name</label>

@@ -1,6 +1,19 @@
+# dependencies
 node_modules/
+
+# secrets — never commit real env files (the *.example templates are fine)
 .env
+.env.*
+!.env.example
+
+# build output
 dist/
 build/
+
+# logs / OS / editor
 *.log
+npm-debug.log*
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/

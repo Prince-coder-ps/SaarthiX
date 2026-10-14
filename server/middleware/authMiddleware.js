@@ -12,6 +12,9 @@ exports.protect = async (req, res, next) => {
     }
 
     const token = auth.split(" ")[1];
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ success: false, message: "JWT secret is not configured on server." });
+    }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id);
