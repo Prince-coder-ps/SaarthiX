@@ -1,0 +1,2147 @@
+{
+  "info": {
+    "name": "SaarthiX - API flow tests",
+    "description": "Import + Run (Collection Runner). Sab requests order me chalni chahiye. Pehle `baseUrl`, `adminEmail`, `adminPassword`, `cronSecret` variables dekho.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@saarthix.com"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin@1234"
+    },
+    {
+      "key": "cronSecret",
+      "value": ""
+    },
+    {
+      "key": "studentEmail",
+      "value": ""
+    },
+    {
+      "key": "alumniEmail",
+      "value": ""
+    },
+    {
+      "key": "otherEmail",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const cv = pm.collectionVariables;",
+          "if (!cv.get('run')) cv.set('run', Date.now());",
+          "const run = cv.get('run');",
+          "if (!cv.get('studentEmail')) cv.set('studentEmail', 'pm_student_' + run + '@example.com');",
+          "if (!cv.get('alumniEmail'))  cv.set('alumniEmail',  'pm_alumni_'  + run + '@example.com');",
+          "if (!cv.get('otherEmail'))   cv.set('otherEmail',   'pm_other_'   + run + '@example.com');",
+          "// a date that is always in the future (2 days ahead)",
+          "cv.set('futureDate', new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health & Admin",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Server is up (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test(\"success true\", function () { pm.expect(pm.response.json().success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin login (saves adminToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Admin pehle script se banana padta hai: server/scripts/createAdmin.js. Email/password collection variables me set karo.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Admin can log in (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const j = pm.response.json();",
+                  "pm.test(\"role is admin\", function () { pm.expect(j.user.role).to.eql('admin'); });",
+                  "pm.collectionVariables.set('adminToken', j.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Users",
+      "item": [
+        {
+          "name": "Register student (saves studentToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Student\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"Test@1234\",\n  \"role\": \"student\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"student registered (status 201)\", function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('studentToken', j.token);",
+                  "pm.collectionVariables.set('studentId', j.user.id || j.user._id);",
+                  "pm.test(\"role is student\", function () { pm.expect(j.user.role).to.eql('student'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register alumni (saves alumniToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Alumni\",\n  \"email\": \"{{alumniEmail}}\",\n  \"password\": \"Test@1234\",\n  \"role\": \"alumni\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"alumni registered (status 201)\", function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('alumniToken', j.token);",
+                  "pm.collectionVariables.set('alumniId', j.user.id || j.user._id);",
+                  "pm.test(\"role is alumni\", function () { pm.expect(j.user.role).to.eql('alumni'); });",
+                  "pm.test(\"alumni starts UNVERIFIED\", function () { pm.expect(!!j.user.isVerified).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register 2nd student (saves otherToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Other Student\",\n  \"email\": \"{{otherEmail}}\",\n  \"password\": \"Test@1234\",\n  \"role\": \"student\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"other registered (status 201)\", function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('otherToken', j.token);",
+                  "pm.collectionVariables.set('otherId', j.user.id || j.user._id);",
+                  "pm.test(\"role is student\", function () { pm.expect(j.user.role).to.eql('student'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student requests UNVERIFIED alumni -> must fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "request"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alumniId\": \"{{alumniId}}\",\n  \"message\": \"Hello\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Unverified alumni cannot be requested (status 400, 403, 404)\", function () { pm.expect([400, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin verifies alumni",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/verify/{{alumniId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "verify",
+                "{{alumniId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verify\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Alumni verified (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Request -> Accept -> Schedule -> Complete",
+      "item": [
+        {
+          "name": "Student sends request (saves requestId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "request"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alumniId\": \"{{alumniId}}\",\n  \"message\": \"Please mentor me on backend development\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Request created (status 200, 201)\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const r = pm.response.json().request;",
+                  "pm.collectionVariables.set('requestId', r._id);",
+                  "pm.test(\"status is pending\", function () { pm.expect(r.status).to.eql('pending'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student tries to ACCEPT own request -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/{{requestId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "{{requestId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Student cannot accept (status 403)\", function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni tries pending -> completed -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/{{requestId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "{{requestId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Illegal transition blocked (status 409)\", function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni tries pending -> scheduled -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/{{requestId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "{{requestId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"scheduled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cannot schedule without a session (status 409)\", function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni accepts",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/{{requestId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "{{requestId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Accepted (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test(\"status accepted\", function () { pm.expect(pm.response.json().request.status).to.eql('accepted'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Schedule with javascript: link -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"time\": \"17:00\",\n  \"timeZone\": \"Asia/Kolkata\",\n  \"meetLink\": \"javascript:alert(1)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Unsafe link rejected (status 400)\", function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Schedule in the PAST -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"date\": \"2020-01-01\",\n  \"time\": \"17:00\",\n  \"timeZone\": \"Asia/Kolkata\",\n  \"meetLink\": \"https://meet.google.com/abc-defg-hij\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Past time rejected (status 400)\", function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Schedule with valid https link (saves sessionId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"time\": \"17:00\",\n  \"timeZone\": \"Asia/Kolkata\",\n  \"notes\": \"Agenda: system design basics\",\n  \"meetLink\": \"https://meet.google.com/abc-defg-hij\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Session created (status 201)\", function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "const s = pm.response.json().session;",
+                  "pm.collectionVariables.set('sessionId', s._id);",
+                  "pm.test(\"17:00 IST is stored as 11:30 UTC\", function () { pm.expect(s.scheduledAt).to.eql(pm.collectionVariables.get('futureDate') + 'T11:30:00.000Z'); });",
+                  "pm.test(\"meetLink stored\", function () { pm.expect(s.meetLink).to.eql('https://meet.google.com/abc-defg-hij'); });",
+                  "pm.test(\"session scheduled\", function () { pm.expect(s.status).to.eql('scheduled'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Schedule AGAIN -> 409 (one active session)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"date\": \"{{futureDate}}\",\n  \"time\": \"18:00\",\n  \"timeZone\": \"Asia/Kolkata\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Duplicate session blocked (status 409)\", function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student dashboard data: request + session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/student",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "student"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const r = pm.response.json().requests.find(x => x._id === pm.collectionVariables.get('requestId'));",
+                  "pm.test(\"request is scheduled\", function () { pm.expect(r.status).to.eql('scheduled'); });",
+                  "pm.test(\"session attached with Meet link (Join Meet button data)\", function () { pm.expect(r.session.meetLink).to.eql('https://meet.google.com/abc-defg-hij'); pm.expect(r.session.status).to.eql('scheduled'); pm.expect(r.session.scheduledAt).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni dashboard data: SAME session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/alumni",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "alumni"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const r = pm.response.json().requests.find(x => x._id === pm.collectionVariables.get('requestId'));",
+                  "pm.test(\"same session id for alumni\", function () { pm.expect(r.session.id).to.eql(pm.collectionVariables.get('sessionId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student reads own session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{requestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{requestId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Student can read (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni reads session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{requestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{requestId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Alumni can read (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "UNRELATED student reads session -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{requestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{requestId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Outsider blocked (status 403)\", function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student tries to complete session -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Student cannot change session (status 403)\", function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni completes session (request also completed)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Completed (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test(\"session completed\", function () { pm.expect(pm.response.json().session.status).to.eql('completed'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Completed -> cancelled -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{sessionId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{sessionId}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cancelled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Terminal state protected (status 409)\", function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Completed request: no Meet data needed (status check)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/student",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "student"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const r = pm.response.json().requests.find(x => x._id === pm.collectionVariables.get('requestId'));",
+                  "pm.test(\"request completed (UI shows NO Join Meet button)\", function () { pm.expect(r.status).to.eql('completed'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Reminder + Notifications",
+      "item": [
+        {
+          "name": "2nd student sends request (saves request2Id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "request"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alumniId\": \"{{alumniId}}\",\n  \"message\": \"Second mentorship cycle test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Created (status 200, 201)\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "pm.collectionVariables.set('request2Id', pm.response.json().request._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni accepts #2",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/{{request2Id}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "{{request2Id}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Accepted (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Schedule session 10 MIN from now (reminder is due immediately)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions"
+              ]
+            },
+            "description": "scheduledAt ISO (UTC, 'Z') bhi chalta hai. Sirf 10 minute baad ka session => reminder turant eligible.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{request2Id}}\",\n  \"scheduledAt\": \"{{scheduledAtSoon}}\",\n  \"meetLink\": \"https://meet.google.com/soo-nnnn-ssn\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('scheduledAtSoon', new Date(Date.now() + 10 * 60000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Session created (status 201)\", function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "pm.collectionVariables.set('session2Id', pm.response.json().session._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger reminder pass now (needs CRON_SECRET on server)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-cron-secret",
+                "value": "{{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/reminders/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "reminders",
+                "run"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 = ran, 404 = CRON_SECRET not set on server (then wait ~1 min for the built-in scheduler) (status 200, 404)\", function () { pm.expect([200, 404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) { console.log('Reminder summary:', JSON.stringify(pm.response.json().summary)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni notifications: reminder present",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications?limit=20"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const j = pm.response.json();",
+                  "const n = j.notifications.find(x => x.relatedSessionId === pm.collectionVariables.get('session2Id'));",
+                  "pm.test(\"alumni got SESSION_REMINDER (agar fail ho: 1 minute ruk ke dobara run karo)\", function () { pm.expect(n, 'notification missing').to.exist; pm.expect(n.type).to.eql('SESSION_REMINDER'); pm.expect(n.isRead).to.eql(false); pm.expect(n.message).to.include('Postman Other Student'); });",
+                  "pm.test(\"unreadCount > 0\", function () { pm.expect(j.unreadCount).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2nd student notifications: reminder present (saves notificationId)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications?limit=20"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const n = pm.response.json().notifications.find(x => x.relatedSessionId === pm.collectionVariables.get('session2Id'));",
+                  "pm.test(\"student got SESSION_REMINDER with alumni name\", function () { pm.expect(n, 'notification missing').to.exist; pm.expect(n.message).to.include('Postman Alumni'); });",
+                  "if (n) pm.collectionVariables.set('notificationId', n._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run reminder AGAIN -> no duplicate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-cron-secret",
+                "value": "{{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/reminders/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "reminders",
+                "run"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK or disabled (status 200, 404)\", function () { pm.expect([200, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications still exactly ONE reminder for that session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications?limit=50"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const list = pm.response.json().notifications.filter(x => x.relatedSessionId === pm.collectionVariables.get('session2Id'));",
+                  "pm.test(\"no duplicate notification\", function () { pm.expect(list.length).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Another user marks notification as read -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cannot touch someone else's notification (status 404)\", function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner marks notification as read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Marked read (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test(\"isRead true\", function () { pm.expect(pm.response.json().notification.isRead).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni: mark all read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test(\"unread is 0\", function () { pm.expect(pm.response.json().unreadCount).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni cancels session #2",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sessions/{{session2Id}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sessions",
+                "{{session2Id}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{alumniToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cancelled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cancelled (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "After cancel: request has NO session (no Meet button)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/student",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "student"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OK (status 200)\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const r = pm.response.json().requests.find(x => x._id === pm.collectionVariables.get('request2Id'));",
+                  "pm.test(\"request cancelled and session is null\", function () { pm.expect(r.status).to.eql('cancelled'); pm.expect(r.session).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Re-request after cancelled session works",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "request"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alumniId\": \"{{alumniId}}\",\n  \"message\": \"Trying again\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"New cycle started (status 200, 201)\", function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "pm.test(\"pending again\", function () { pm.expect(pm.response.json().request.status).to.eql('pending'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Security checks",
+      "item": [
+        {
+          "name": "Notifications without token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Auth required (status 401)\", function () { pm.expect([401]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alumni list without token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mentorship/alumni-list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentorship",
+                "alumni-list"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Auth required (status 401)\", function () { pm.expect([401]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cron trigger with WRONG secret",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-cron-secret",
+                "value": "definitely-wrong"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/internal/reminders/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "reminders",
+                "run"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 (secret set) or 404 (feature off) (status 401, 404)\", function () { pm.expect([401, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student cannot open admin stats -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "stats"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Role protected (status 403)\", function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
