@@ -42,6 +42,7 @@ if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
 
 // ── Routes ────────────────────────────────────────────────────
 app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
+app.use("/api/upload", require("./routes/uploadRoutes")); // profile photo (Cloudinary)
 app.use("/api/mentorship", require("./routes/mentorshipRoutes"));
 app.use("/api/sessions", require("./routes/sessionRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
