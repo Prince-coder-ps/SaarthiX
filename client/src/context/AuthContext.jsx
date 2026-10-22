@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { authAPI } from "../services/api";
 
 const AuthContext = createContext(null);
@@ -56,27 +62,30 @@ export const AuthProvider = ({ children }) => {
       const { data } = await authAPI.register({ name, email, password, role });
       persistSession(data.token, data.user);
       setUser(data.user);
-      return { error: null };
+      return { error: null, user: data.user };
     } catch (err) {
       return {
+        user: null,
         error: new Error(
-          err.response?.data?.message || "Registration failed. Please try again."
+          err.response?.data?.message ||
+            "Registration failed. Please try again.",
         ),
       };
     }
   }, []);
 
-  // ======== signIn ========== // 
+  // ======== signIn ========== //
   const signIn = useCallback(async (email, password) => {
     try {
       const { data } = await authAPI.login({ email, password });
       persistSession(data.token, data.user);
       setUser(data.user);
-      return { error: null };
+      return { error: null, user: data.user };
     } catch (err) {
       return {
+        user: null,
         error: new Error(
-          err.response?.data?.message || "Invalid email or password."
+          err.response?.data?.message || "Invalid email or password.",
         ),
       };
     }
@@ -101,7 +110,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    profile: user,          // alias — existing components use both
+    profile: user, // alias — existing components use both
     isAuthenticated: !!user,
     isLoading,
     signUp,
