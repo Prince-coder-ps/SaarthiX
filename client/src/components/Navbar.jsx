@@ -1,18 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-  GraduationCap,
-  User,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  X,
-  Loader2,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { User, LogOut, Menu, X, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
+import { getPostLoginPath, getDashboardPath } from "../utils/roleRoutes";
 import NotificationBell from "./NotificationBell";
 import logo from "/logo.png";
 
@@ -78,15 +69,18 @@ function Input({ type = "text", ...props }) {
 // Navbar
 // ─────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { user, isAuthenticated, isLoading, signIn, signUp, signOut } = useAuth();
+  const { user, isAuthenticated, isLoading, signIn, signUp, signOut } =
+    useAuth();
   const navigate = useNavigate();
 
-  const [loginOpen, setLoginOpen]       = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [mobileOpen, setMobileOpen]     = useState(false);
-  const [regRole, setRegRole]           = useState("student");
-  const [submitting, setSubmitting]     = useState(false);
-  const location                        = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [regRole, setRegRole] = useState("student");
+  const [submitting, setSubmitting] = useState(false);
+  const location = useLocation();
+
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (location.pathname === "/student-signup") {
@@ -100,20 +94,14 @@ export default function Navbar() {
     }
   }, [location.pathname, navigate]);
 
-  const getDashboardPath = () => {
-    if (user?.role === "alumni") return "/alumni-dashboard";
-    if (user?.role === "admin")  return "/admin";
-    return "/student-dashboard";
-  };
-
   // ── Login ────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     const fd = new FormData(e.currentTarget);
-    const { error } = await signIn(
+    const { error, user: loggedInUser } = await signIn(
       fd.get("email"),
-      fd.get("password")
+      fd.get("password"),
     );
     setSubmitting(false);
 
@@ -122,8 +110,10 @@ export default function Navbar() {
       return;
     }
     setLoginOpen(false);
-    toast.success("Welcome back!");
-    navigate("/feed");
+    const firstName = (loggedInUser?.name || "").split(" ")[0];
+    toast.success(firstName ? `Welcome back, ${firstName}!` : "Welcome back!");
+    // Role-based landing page (admin → /admin, others → /feed)
+    navigate(getPostLoginPath(loggedInUser?.role));
   };
 
   // ── Register ─────────────────────────────────────────────
@@ -138,11 +128,11 @@ export default function Navbar() {
       return;
     }
 
-    const { error } = await signUp(
+    const { error, user: newUser } = await signUp(
       fd.get("email"),
       fd.get("password"),
       fd.get("name"),
-      regRole
+      regRole,
     );
     setSubmitting(false);
 
@@ -152,7 +142,7 @@ export default function Navbar() {
     }
     setRegisterOpen(false);
     toast.success("Account created! You are now logged in.");
-    navigate("/feed");
+    navigate(getPostLoginPath(newUser?.role));
   };
 
   const handleSignOut = () => {
@@ -162,51 +152,79 @@ export default function Navbar() {
     toast.success("Signed out successfully.");
   };
 
+  // ── Shared link styling (highlights the page you are on) ──
+  const isActive = (path) => location.pathname === path;
+  const linkClass = (path) =>
+    `text-sm transition-colors ${
+      isActive(path)
+        ? "text-primary font-semibold"
+        : "text-muted-foreground hover:text-foreground"
+    }`;
+
   // ── Logged-OUT nav links (landing page sections) ─────────
   const PublicNavLinks = () => (
     <>
-      <a href="/#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <a
+        href="/#about"
+        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
         Home
       </a>
-      <a href="/#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <a
+        href="/#how-it-works"
+        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
         How It Works
       </a>
-      <a href="/#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <a
+        href="/#testimonials"
+        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
         Testimonials
       </a>
     </>
   );
 
-  // ── Logged-IN nav links ───────────────────────────────────
-  const AuthNavLinks = () => (
-    <>
-      <Link to="/feed" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-        Feed
+  // ── Logged-IN nav links (role based) ─────────────────────
+  // Admin manages the platform from the Admin Panel; students/alumni get Feed + Dashboard.
+  const authLinks = isAdmin
+    ? [{ to: "/admin", label: "Admin Panel" }]
+    : [
+        { to: "/feed", label: "Feed" },
+        { to: getDashboardPath(user?.role), label: "Dashboard" },
+      ];
+
+  const renderAuthLinks = () =>
+    authLinks.map((l) => (
+      <Link
+        key={l.to}
+        to={l.to}
+        className={linkClass(l.to)}
+        onClick={() => setMobileOpen(false)}
+      >
+        {l.label}
       </Link>
-      <Link to={getDashboardPath()} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-        Dashboard
-      </Link>
-    </>
-  );
+    ));
 
   return (
     <>
       {/* ======= Main ======= */}
       <nav className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-6xl">
-
           {/* Brand(Logo and logoname) */}
-          <Link to="/" className="flex items-center gap-2 font-bold text-primary text-lg shrink-0">
-  <img src={logo} alt="SaarthiX" className="h-8 w-auto" />
-  
-  <span>
-    Saarthi<span className="text-orange-500">X</span>
-  </span>
-</Link>
+          <Link
+            to={isAuthenticated ? getPostLoginPath(user?.role) : "/"}
+            className="flex items-center gap-2 font-bold text-primary text-lg shrink-0"
+          >
+            <img src={logo} alt="SaarthiX" className="h-8 w-auto" />
+            <span>
+              Saarthi<span className="text-orange-500">X</span>
+            </span>
+          </Link>
 
           {/* Desktop center links */}
           <div className="hidden md:flex items-center gap-6">
-            {isAuthenticated ? <AuthNavLinks /> : <PublicNavLinks />}
+            {isAuthenticated ? renderAuthLinks() : <PublicNavLinks />}
           </div>
 
           {/* Desktop right actions */}
@@ -215,17 +233,10 @@ export default function Navbar() {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : isAuthenticated ? (
               <>
-                <NotificationBell />
-                <Link
-                  to={getDashboardPath()}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Link>
+                {!isAdmin && <NotificationBell />}
                 <Link
                   to="/profile"
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className={`flex items-center gap-1.5 ${linkClass("/profile")}`}
                 >
                   <User className="h-4 w-4" />
                   Profile
@@ -259,13 +270,19 @@ export default function Navbar() {
 
           {/* Mobile bell + toggle */}
           <div className="md:hidden flex items-center gap-1">
-            {isAuthenticated && <NotificationBell onNavigate={() => setMobileOpen(false)} />}
+            {isAuthenticated && !isAdmin && (
+              <NotificationBell onNavigate={() => setMobileOpen(false)} />
+            )}
             <button
               className="p-1 rounded-md hover:bg-muted transition-colors"
               onClick={() => setMobileOpen((o) => !o)}
               aria-label="Toggle menu"
             >
-              {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {mobileOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </button>
           </div>
         </div>
@@ -273,18 +290,11 @@ export default function Navbar() {
         {/* Mobile dropdown */}
         {mobileOpen && (
           <div className="md:hidden border-t border-border bg-card px-4 py-4 space-y-3 animate-fade-in">
-            <div className="flex flex-col gap-2 pb-3 border-b border-border">
-              {isAuthenticated ? <AuthNavLinks /> : <PublicNavLinks />}
+            <div className="flex flex-col gap-3 pb-3 border-b border-border">
+              {isAuthenticated ? renderAuthLinks() : <PublicNavLinks />}
             </div>
             {isAuthenticated ? (
               <>
-                <Link
-                  to={getDashboardPath()}
-                  className="flex items-center gap-2 text-sm py-1"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <LayoutDashboard className="h-4 w-4" /> Dashboard
-                </Link>
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 text-sm py-1"
@@ -303,13 +313,19 @@ export default function Navbar() {
               <div className="flex gap-3 pt-1">
                 <button
                   className="flex-1 text-sm font-medium border border-border rounded-md py-2 hover:bg-muted transition-colors"
-                  onClick={() => { setLoginOpen(true); setMobileOpen(false); }}
+                  onClick={() => {
+                    setLoginOpen(true);
+                    setMobileOpen(false);
+                  }}
                 >
                   Sign In
                 </button>
                 <button
                   className="flex-1 btn-primary text-sm py-2"
-                  onClick={() => { setRegisterOpen(true); setMobileOpen(false); }}
+                  onClick={() => {
+                    setRegisterOpen(true);
+                    setMobileOpen(false);
+                  }}
                 >
                   Join Now
                 </button>
@@ -322,15 +338,27 @@ export default function Navbar() {
       {/* ── Login Modal ────────────────────────────────────── */}
       <Modal open={loginOpen} onClose={() => setLoginOpen(false)}>
         <h2 className="text-lg font-bold mb-1">Welcome back</h2>
-        <p className="text-sm text-muted-foreground mb-5">Sign in to your account</p>
+        <p className="text-sm text-muted-foreground mb-5">
+          Sign in to your account
+        </p>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="text-sm font-medium block mb-1">Email</label>
-            <Input name="email" type="email" required placeholder="you@example.com" />
+            <Input
+              name="email"
+              type="email"
+              required
+              placeholder="you@example.com"
+            />
           </div>
           <div>
             <label className="text-sm font-medium block mb-1">Password</label>
-            <Input name="password" type="password" required placeholder="••••••••" />
+            <Input
+              name="password"
+              type="password"
+              required
+              placeholder="••••••••"
+            />
           </div>
           <button
             type="submit"
@@ -345,7 +373,10 @@ export default function Navbar() {
           No account?{" "}
           <button
             className="text-primary font-medium underline-offset-2 hover:underline"
-            onClick={() => { setLoginOpen(false); setRegisterOpen(true); }}
+            onClick={() => {
+              setLoginOpen(false);
+              setRegisterOpen(true);
+            }}
           >
             Create one
           </button>
@@ -355,7 +386,9 @@ export default function Navbar() {
       {/* ======= Register Modal ======== */}
       <Modal open={registerOpen} onClose={() => setRegisterOpen(false)}>
         <h2 className="text-lg font-bold mb-1">Create your account</h2>
-        <p className="text-sm text-muted-foreground mb-5">Join the SaarthiX community</p>
+        <p className="text-sm text-muted-foreground mb-5">
+          Join the SaarthiX community
+        </p>
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="text-sm font-medium block mb-1">Full Name</label>
@@ -363,15 +396,32 @@ export default function Navbar() {
           </div>
           <div>
             <label className="text-sm font-medium block mb-1">Email</label>
-            <Input name="email" type="email" required placeholder="you@example.com" />
+            <Input
+              name="email"
+              type="email"
+              required
+              placeholder="you@example.com"
+            />
           </div>
           <div>
             <label className="text-sm font-medium block mb-1">Password</label>
-            <Input name="password" type="password" required placeholder="Min. 6 characters" />
+            <Input
+              name="password"
+              type="password"
+              required
+              placeholder="Min. 6 characters"
+            />
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Confirm Password</label>
-            <Input name="confirmPassword" type="password" required placeholder="Re-enter password" />
+            <label className="text-sm font-medium block mb-1">
+              Confirm Password
+            </label>
+            <Input
+              name="confirmPassword"
+              type="password"
+              required
+              placeholder="Re-enter password"
+            />
           </div>
 
           {/* Role selector */}
@@ -408,7 +458,10 @@ export default function Navbar() {
           Already have an account?{" "}
           <button
             className="text-primary font-medium underline-offset-2 hover:underline"
-            onClick={() => { setRegisterOpen(false); setLoginOpen(true); }}
+            onClick={() => {
+              setRegisterOpen(false);
+              setLoginOpen(true);
+            }}
           >
             Sign in
           </button>
