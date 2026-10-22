@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Users,
@@ -22,8 +27,9 @@ import { formatDate } from "../utils/helpers";
 import Navbar from "../components/Navbar";
 import Loader from "../components/Loader";
 
-const PAGE_SIZE = 15;
-const FETCH_LIMIT = 100; // backend caps /admin/users at 100 per request
+const PAGE_SIZE = 10; // users per page (fetched from the server one page at a time)
+const QUEUE_LIMIT = 20; // max pending alumni shown in the verification queue
+const SEARCH_DEBOUNCE_MS = 350; // wait for the admin to stop typing before searching
 
 // ─────────────────────────────────────────────────────────────
 // Small reusable pieces
@@ -164,6 +170,7 @@ export default function AdminPanel() {
 
   // filters / pagination / confirm dialog
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all"); // all | student | alumni | admin
   const [statusFilter, setStatusFilter] = useState("all"); // all | verified | pending (alumni only)
   const [page, setPage] = useState(1);
@@ -174,12 +181,47 @@ export default function AdminPanel() {
 
   const isAdmin = !!user && user.role === "admin";
 
+  // Debounce the search box so we do not hit the server on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
+
   // ========= Data fetching ========= //
-  const { data: users = [], isLoading: usersLoading } = useQuery({
-    queryKey: ["admin-users"],
+  // All Users table — the server does the search / filter / pagination
+  const usersQuery = useQuery({
+    queryKey: [
+      "admin-users",
+      { page, roleFilter, statusFilter, q: debouncedSearch },
+    ],
+    enabled: isAdmin,
+    placeholderData: keepPreviousData, // keep showing the old page while the next one loads
+    queryFn: () =>
+      adminAPI
+        .getUsers({
+          page,
+          limit: PAGE_SIZE,
+          ...(roleFilter !== "all" && { role: roleFilter }),
+          ...(roleFilter === "alumni" &&
+            statusFilter !== "all" && {
+              verified: statusFilter === "verified",
+            }),
+          ...(debouncedSearch && { search: debouncedSearch }),
+        })
+        .then((r) => r.data),
+  });
+
+  // Verification queue — always the pending alumni, independent of the table filters
+  const queueQuery = useQuery({
+    queryKey: ["admin-queue"],
     enabled: isAdmin,
     queryFn: () =>
-      adminAPI.getUsers({ limit: FETCH_LIMIT }).then((r) => r.data.users),
+      adminAPI
+        .getUsers({ role: "alumni", verified: false, limit: QUEUE_LIMIT })
+        .then((r) => r.data),
   });
 
   const { data: stats = {} } = useQuery({
@@ -188,11 +230,28 @@ export default function AdminPanel() {
     queryFn: () => adminAPI.getStats().then((r) => r.data.stats),
   });
 
+  const users = usersQuery.data?.users ?? [];
+  const total = usersQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, usersQuery.data?.totalPages ?? 1);
+  const usersLoading = usersQuery.isLoading;
+  const refetching = usersQuery.isFetching && usersQuery.isPlaceholderData;
+
+  const unverified = queueQuery.data?.users ?? [];
+  const queueLoading = queueQuery.isLoading;
+  const pendingTotal =
+    stats.pendingVerifications ?? queueQuery.data?.total ?? 0;
+
+  // If the last user on the last page is deleted, step back to the previous page
+  useEffect(() => {
+    if (usersQuery.data && page > totalPages) setPage(totalPages);
+  }, [usersQuery.data, page, totalPages]);
+
   // ======= Mutations ======== //
   const verifyMutation = useMutation({
     mutationFn: ({ userId, verify }) => adminAPI.verifyAlumni(userId, verify),
     onSuccess: (_, { verify }) => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-queue"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       toast.success(verify ? "Alumni verified!" : "Verification revoked.");
     },
@@ -203,6 +262,7 @@ export default function AdminPanel() {
     mutationFn: (userId) => adminAPI.deleteUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-queue"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       toast.success("User deleted.");
     },
@@ -235,45 +295,15 @@ export default function AdminPanel() {
   };
 
   // ======== Derived data ========= //
-  const unverified = useMemo(
-    () => users.filter((u) => u.role === "alumni" && !u.isVerified),
-    [users],
-  );
+  const counts = {
+    all: stats.totalUsers ?? 0,
+    student: stats.totalStudents ?? 0,
+    alumni: stats.totalAlumni ?? 0,
+    admin: stats.totalAdmins ?? 0,
+  };
 
-  const counts = useMemo(
-    () => ({
-      all: users.length,
-      student: users.filter((u) => u.role === "student").length,
-      alumni: users.filter((u) => u.role === "alumni").length,
-      admin: users.filter((u) => u.role === "admin").length,
-    }),
-    [users],
-  );
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return users.filter((u) => {
-      if (roleFilter !== "all" && u.role !== roleFilter) return false;
-      if (roleFilter === "alumni") {
-        if (statusFilter === "verified" && !u.isVerified) return false;
-        if (statusFilter === "pending" && u.isVerified) return false;
-      }
-      if (q) {
-        const hay = `${u.name || ""} ${u.email || ""}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [users, search, roleFilter, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
-  );
-  const firstShown = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-  const lastShown = Math.min(safePage * PAGE_SIZE, filtered.length);
+  const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(page * PAGE_SIZE, total);
 
   const filtersActive = search.trim() !== "" || roleFilter !== "all";
 
@@ -287,12 +317,10 @@ export default function AdminPanel() {
     setStatusFilter(s);
     setPage(1);
   };
-  const changeSearch = (v) => {
-    setSearch(v);
-    setPage(1);
-  };
+  const changeSearch = (v) => setSearch(v);
   const clearFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setRoleFilter("all");
     setStatusFilter("all");
     setPage(1);
@@ -327,6 +355,7 @@ export default function AdminPanel() {
       bg: "bg-green-50",
       onClick: () => {
         setSearch("");
+        setDebouncedSearch("");
         setRoleFilter("alumni");
         setStatusFilter("verified");
         setPage(1);
@@ -410,14 +439,14 @@ export default function AdminPanel() {
         <div ref={queueRef} className="dashboard-card mb-8 scroll-mt-24">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Alumni Verification Queue</h2>
-            {unverified.length > 0 && (
+            {pendingTotal > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300">
-                {unverified.length} pending
+                {pendingTotal} pending
               </span>
             )}
           </div>
 
-          {usersLoading ? (
+          {queueLoading ? (
             <Loader />
           ) : unverified.length === 0 ? (
             <div className="text-center py-8">
@@ -512,6 +541,25 @@ export default function AdminPanel() {
                   })}
                 </tbody>
               </table>
+              {pendingTotal > unverified.length && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Showing {unverified.length} of {pendingTotal} pending.{" "}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      setSearch("");
+                      setDebouncedSearch("");
+                      setRoleFilter("alumni");
+                      setStatusFilter("pending");
+                      setPage(1);
+                      scrollTo(usersRef);
+                    }}
+                  >
+                    View all pending
+                  </button>
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -601,7 +649,9 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div
+            className={`overflow-x-auto transition-opacity ${refetching ? "opacity-60" : ""}`}
+          >
             <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-border text-left">
@@ -620,14 +670,14 @@ export default function AdminPanel() {
               <tbody>
                 {usersLoading ? (
                   <SkeletonRows rows={4} cols={6} />
-                ) : pageItems.length === 0 ? (
+                ) : users.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-10 text-center">
                       <Users className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">
-                        {users.length === 0
-                          ? "No users yet."
-                          : "No users match your filters."}
+                        {filtersActive
+                          ? "No users match your filters."
+                          : "No users yet."}
                       </p>
                       {filtersActive && (
                         <button
@@ -641,7 +691,7 @@ export default function AdminPanel() {
                     </td>
                   </tr>
                 ) : (
-                  pageItems.map((u) => {
+                  users.map((u) => {
                     const isSelf = u._id === user.id;
                     const busy = busyId === u._id;
                     return (
@@ -747,28 +797,28 @@ export default function AdminPanel() {
           </div>
 
           {/* Pagination */}
-          {!usersLoading && filtered.length > 0 && (
+          {!usersLoading && total > 0 && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4">
               <p className="text-xs text-muted-foreground">
-                Showing {firstShown}–{lastShown} of {filtered.length}
+                Showing {firstShown}–{lastShown} of {total}
               </p>
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setPage(safePage - 1)}
-                    disabled={safePage === 1}
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
                     className="btn-outline text-xs px-2.5 py-1.5 gap-1"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" /> Prev
                   </button>
                   <span className="text-xs text-muted-foreground">
-                    Page {safePage} of {totalPages}
+                    Page {page} of {totalPages}
                   </span>
                   <button
                     type="button"
-                    onClick={() => setPage(safePage + 1)}
-                    disabled={safePage === totalPages}
+                    onClick={() => setPage(page + 1)}
+                    disabled={page >= totalPages}
                     className="btn-outline text-xs px-2.5 py-1.5 gap-1"
                   >
                     Next <ChevronRight className="h-3.5 w-3.5" />
@@ -776,13 +826,6 @@ export default function AdminPanel() {
                 </div>
               )}
             </div>
-          )}
-
-          {!usersLoading && (stats.totalUsers ?? 0) > users.length && (
-            <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mt-4">
-              Showing the latest {users.length} of {stats.totalUsers} users.
-              Older accounts will appear here once server-side search is added.
-            </p>
           )}
         </div>
       </div>
