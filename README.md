@@ -28,29 +28,25 @@ Built with the **MERN** stack (MongoDB, Express, React, Node.js).
 ## Features
 
 ### Student
-
 - Browse **verified** alumni and search by name, domain or company.
 - Send a mentorship request with a short message (max 500 characters).
-- Track every request with a live status badge: _pending → accepted → scheduled → completed_ (or rejected / cancelled).
+- Track every request with a live status badge: *pending → accepted → scheduled → completed* (or rejected / cancelled).
 - Cancel a request while it is still **pending**.
 - After a rejection, a **7-day cooldown** applies before re-requesting the same alumni (the API tells you when you can ask again).
 - See the scheduled **date, time and a Join Meet button** right on the request card, plus a session-details dialog.
 
 ### Alumni
-
 - Sign up (the account stays **unverified** until an admin verifies it).
 - Accept or reject incoming requests.
 - Schedule a session for an accepted request: date, time, optional notes, optional **https** meeting link.
-- See _Upcoming Sessions_ (with Join Meet), _Mark Done_ when a session is over, and _Completed Sessions_.
+- See *Upcoming Sessions* (with Join Meet), *Mark Done* when a session is over, and *Completed Sessions*.
 
 ### Admin
-
 - Dashboard stats: total users, verified alumni, pending alumni, requests, sessions.
 - **Alumni verification queue** — verify or revoke.
 - User list (the API supports role / verified filters and pagination) and **delete user** (also removes their requests, sessions, posts, reminders and notifications).
 
 ### Everyone (signed in)
-
 - **Community feed** — post short updates (max 2000 characters) and read the latest posts.
 - **Profile** — edit name, batch, domain, company and bio.
 - **Notification bell** with an unread count, a dropdown of recent notifications, "mark all read".
@@ -77,27 +73,27 @@ Student ──request──▶ pending ──accept──▶ accepted ──sche
 
 **Rules enforced on the server** (never only in the UI):
 
-| Rule                 | Behaviour                                                                                                                              |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Who can request      | Only students, only to **verified** alumni, not to themselves                                                                          |
-| Duplicate requests   | One request document per student–alumni pair; re-requests reuse it                                                                     |
-| Rejection cooldown   | 7 days before the same student can ask the same alumni again                                                                           |
+| Rule | Behaviour |
+|---|---|
+| Who can request | Only students, only to **verified** alumni, not to themselves |
+| Duplicate requests | One request document per student–alumni pair; re-requests reuse it |
+| Rejection cooldown | 7 days before the same student can ask the same alumni again |
 | Valid status changes | Fixed state machine (see [Architecture](docs/ARCHITECTURE.md#4-mentorship-request--session-lifecycle)); illegal changes return **409** |
-| Who may change what  | Student → cancel own pending request. Owner alumni / admin → accept, reject, complete. Only the session creates `scheduled`            |
-| One active session   | At most one `scheduled` session per request (database unique index)                                                                    |
-| Meet link            | Optional, but must be a valid **https** URL (no `javascript:`, `data:`, `file:`, credentials in URL)                                   |
-| Session time         | Must be in the future; stored as a UTC `Date`                                                                                          |
+| Who may change what | Student → cancel own pending request. Owner alumni / admin → accept, reject, complete. Only the session creates `scheduled` |
+| One active session | At most one `scheduled` session per request (database unique index) |
+| Meet link | Optional, but must be a valid **https** URL (no `javascript:`, `data:`, `file:`, credentials in URL) |
+| Session time | Must be in the future; stored as a UTC `Date` |
 
 ---
 
 ## Tech stack
 
-| Layer    | Technology                                                                                                     |
-| -------- | -------------------------------------------------------------------------------------------------------------- |
-| Frontend | React 18, Vite, React Router, TanStack React Query, Axios, Tailwind CSS, lucide-react, sonner (toasts)         |
-| Backend  | Node.js (≥ 18), Express 4, Mongoose 8, JSON Web Tokens, bcryptjs, Helmet, CORS, express-rate-limit, Nodemailer |
-| Database | MongoDB (local or Atlas)                                                                                       |
-| Tests    | Custom HTTP integration runner (`server/tests/api.test.js`), Node's built-in `node:test` for client logic      |
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite, React Router, TanStack React Query, Axios, Tailwind CSS, lucide-react, sonner (toasts) |
+| Backend | Node.js (≥ 18), Express 4, Mongoose 8, JSON Web Tokens, bcryptjs, Helmet, CORS, express-rate-limit, Nodemailer |
+| Database | MongoDB (local or Atlas) |
+| Tests | Custom HTTP integration runner (`server/tests/api.test.js`), Node's built-in `node:test` for client logic |
 
 ---
 
@@ -185,12 +181,12 @@ Health check: `GET http://localhost:5000/api/health`.
 
 Useful scripts
 
-| Command         | What it does                                    |
-| --------------- | ----------------------------------------------- |
-| `npm run dev`   | API (nodemon) + web app, together               |
-| `npm start`     | Production API (`node server/server.js`)        |
+| Command | What it does |
+|---|---|
+| `npm run dev` | API (nodemon) + web app, together |
+| `npm start` | Production API (`node server/server.js`) |
 | `npm run build` | Production build of the web app → `client/dist` |
-| `npm test`      | Server tests + client tests                     |
+| `npm test` | Server tests + client tests |
 
 ---
 
@@ -198,25 +194,25 @@ Useful scripts
 
 ### Server — `server/.env`
 
-| Variable                                                                            | Required         | Description                                                                        |
-| ----------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------- |
-| `MONGO_URI`                                                                         | ✅               | MongoDB connection string (include the database name)                              |
-| `JWT_SECRET`                                                                        | ✅               | Long random string; the server refuses to start without it                         |
-| `JWT_EXPIRES_IN`                                                                    |                  | Token lifetime, default `7d`                                                       |
-| `PORT`                                                                              |                  | Default `5000` (hosts usually inject this)                                         |
-| `NODE_ENV`                                                                          |                  | `development` / `production`                                                       |
-| `CLIENT_ORIGIN`                                                                     | ✅ in production | Your frontend URL for CORS, e.g. `https://saarthix.vercel.app` (no trailing slash) |
-| `APP_TIMEZONE`                                                                      |                  | IANA zone used when a session time is entered without one. Default `Asia/Kolkata`  |
-| `EMAIL_HOST` `EMAIL_PORT` `EMAIL_SECURE` `EMAIL_USER` `EMAIL_PASSWORD` `EMAIL_FROM` | for emails       | SMTP settings for reminder emails (see below)                                      |
-| `ENABLE_REMINDER_SCHEDULER`                                                         |                  | `false` disables the built-in 60-second scheduler. Default on                      |
-| `CRON_SECRET`                                                                       | optional         | Enables `POST /api/internal/reminders/run` for external schedulers                 |
+| Variable | Required | Description |
+|---|---|---|
+| `MONGO_URI` | ✅ | MongoDB connection string (include the database name) |
+| `JWT_SECRET` | ✅ | Long random string; the server refuses to start without it |
+| `JWT_EXPIRES_IN` | | Token lifetime, default `7d` |
+| `PORT` | | Default `5000` (hosts usually inject this) |
+| `NODE_ENV` | | `development` / `production` |
+| `CLIENT_ORIGIN` | ✅ in production | Your frontend URL for CORS, e.g. `https://saarthix.vercel.app` (no trailing slash) |
+| `APP_TIMEZONE` | | IANA zone used when a session time is entered without one. Default `Asia/Kolkata` |
+| `EMAIL_HOST` `EMAIL_PORT` `EMAIL_SECURE` `EMAIL_USER` `EMAIL_PASSWORD` `EMAIL_FROM` | for emails | SMTP settings for reminder emails (see below) |
+| `ENABLE_REMINDER_SCHEDULER` | | `false` disables the built-in 60-second scheduler. Default on |
+| `CRON_SECRET` | optional | Enables `POST /api/internal/reminders/run` for external schedulers |
 
 `createAdmin.js` reads `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (the password is **required** in production).
 
 ### Client — `client/.env`
 
-| Variable       | Description                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------- |
+| Variable | Description |
+|---|---|
 | `VITE_API_URL` | Backend base URL **including `/api`**, e.g. `https://your-api.onrender.com/api`. Read at **build** time |
 
 ---
@@ -225,29 +221,29 @@ Useful scripts
 
 All endpoints are under `/api`. 🔒 = needs `Authorization: Bearer <token>`.
 
-| Area          | Method & path                                    | Who                                   | Purpose                                                  |
-| ------------- | ------------------------------------------------ | ------------------------------------- | -------------------------------------------------------- |
-| Health        | `GET /health`                                    | public                                | Liveness check                                           |
-| Auth          | `POST /auth/register`                            | public                                | Create `student` or `alumni` account                     |
-|               | `POST /auth/login`                               | public                                | Returns JWT + user                                       |
-|               | `GET /auth/me` 🔒                                | any                                   | Current user                                             |
-|               | `PUT /auth/profile` 🔒                           | any                                   | Update name, batch, domain, company, bio, avatar         |
-| Mentorship    | `GET /mentorship/alumni-list?search=&domain=` 🔒 | any                                   | Verified alumni (max 50)                                 |
-|               | `POST /mentorship/request` 🔒                    | student                               | Send / re-send a request                                 |
-|               | `GET /mentorship/student` 🔒                     | student                               | My requests (+ `session` when scheduled/completed)       |
-|               | `GET /mentorship/alumni` 🔒                      | alumni                                | Requests sent to me (+ `session`)                        |
-|               | `PATCH /mentorship/:id/status` 🔒                | see rules                             | `accepted` / `rejected` / `cancelled` / `completed`      |
-| Sessions      | `POST /sessions` 🔒                              | owner alumni, admin                   | Schedule a session for an accepted request               |
-|               | `GET /sessions/:requestId` 🔒                    | student, alumni of the request, admin | Latest session of a request                              |
-|               | `PATCH /sessions/:id/status` 🔒                  | owner alumni, admin                   | `completed` or `cancelled`                               |
-| Notifications | `GET /notifications?limit=&unread=` 🔒           | any (own only)                        | List + `unreadCount`                                     |
-|               | `PATCH /notifications/:id/read` 🔒               | owner                                 | Mark one read                                            |
-|               | `PATCH /notifications/read-all` 🔒               | any (own only)                        | Mark all read                                            |
-| Feed          | `GET /posts` · `POST /posts` 🔒                  | any                                   | Community feed                                           |
-| Admin         | `GET /admin/users` · `GET /admin/stats` 🔒       | admin                                 | Users (filter/paginate), dashboard stats                 |
-|               | `PATCH /admin/verify/:userId` 🔒                 | admin                                 | Verify / revoke an alumni                                |
-|               | `DELETE /admin/users/:userId` 🔒                 | admin                                 | Delete a user and their data                             |
-| Internal      | `POST /internal/reminders/run`                   | cron (`x-cron-secret`)                | Run one reminder pass; `404` unless `CRON_SECRET` is set |
+| Area | Method & path | Who | Purpose |
+|---|---|---|---|
+| Health | `GET /health` | public | Liveness check |
+| Auth | `POST /auth/register` | public | Create `student` or `alumni` account |
+| | `POST /auth/login` | public | Returns JWT + user |
+| | `GET /auth/me` 🔒 | any | Current user |
+| | `PUT /auth/profile` 🔒 | any | Update name, batch, domain, company, bio, avatar |
+| Mentorship | `GET /mentorship/alumni-list?search=&domain=` 🔒 | any | Verified alumni (max 50) |
+| | `POST /mentorship/request` 🔒 | student | Send / re-send a request |
+| | `GET /mentorship/student` 🔒 | student | My requests (+ `session` when scheduled/completed) |
+| | `GET /mentorship/alumni` 🔒 | alumni | Requests sent to me (+ `session`) |
+| | `PATCH /mentorship/:id/status` 🔒 | see rules | `accepted` / `rejected` / `cancelled` / `completed` |
+| Sessions | `POST /sessions` 🔒 | owner alumni, admin | Schedule a session for an accepted request |
+| | `GET /sessions/:requestId` 🔒 | student, alumni of the request, admin | Latest session of a request |
+| | `PATCH /sessions/:id/status` 🔒 | owner alumni, admin | `completed` or `cancelled` |
+| Notifications | `GET /notifications?limit=&unread=` 🔒 | any (own only) | List + `unreadCount` |
+| | `PATCH /notifications/:id/read` 🔒 | owner | Mark one read |
+| | `PATCH /notifications/read-all` 🔒 | any (own only) | Mark all read |
+| Feed | `GET /posts` · `POST /posts` 🔒 | any | Community feed |
+| Admin | `GET /admin/users` · `GET /admin/stats` 🔒 | admin | Users (filter/paginate), dashboard stats |
+| | `PATCH /admin/verify/:userId` 🔒 | admin | Verify / revoke an alumni |
+| | `DELETE /admin/users/:userId` 🔒 | admin | Delete a user and their data |
+| Internal | `POST /internal/reminders/run` | cron (`x-cron-secret`) | Run one reminder pass; `404` unless `CRON_SECRET` is set |
 
 `POST /sessions` body: `{ requestId, date: "YYYY-MM-DD", time: "HH:mm", timeZone?, notes?, meetLink? }` — or `scheduledAt` as an ISO string **with an offset** (e.g. `2026-10-05T17:00:00+05:30`).
 
@@ -267,10 +263,10 @@ Errors use `{ success: false, message }`. Typical codes: `400` validation, `401`
 
 Any SMTP provider works. Two easy options:
 
-| Provider          | `EMAIL_HOST`           | `EMAIL_PORT` | Notes                                                                                                                                |
-| ----------------- | ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Brevo (free tier) | `smtp-relay.brevo.com` | `587`        | Use the SMTP login/key from Brevo as `EMAIL_USER` / `EMAIL_PASSWORD`; verify your sender address. Check Brevo's current free limits. |
-| Gmail             | `smtp.gmail.com`       | `587`        | Turn on 2-step verification and create an **App Password** (not your normal password).                                               |
+| Provider | `EMAIL_HOST` | `EMAIL_PORT` | Notes |
+|---|---|---|---|
+| Brevo (free tier) | `smtp-relay.brevo.com` | `587` | Use the SMTP login/key from Brevo as `EMAIL_USER` / `EMAIL_PASSWORD`; verify your sender address. Check Brevo's current free limits. |
+| Gmail | `smtp.gmail.com` | `587` | Turn on 2-step verification and create an **App Password** (not your normal password). |
 
 `EMAIL_FROM` example: `SaarthiX <you@example.com>`. Without SMTP settings, development mode only **logs** the email; in production the email step fails (and is logged) but in-app notifications still work.
 
@@ -281,25 +277,21 @@ Any SMTP provider works. Two easy options:
 A typical free setup: **MongoDB Atlas** (database) + **Render or Railway** (API) + **Vercel or Netlify** (web app).
 
 ### 1. Database — MongoDB Atlas
-
 1. Create a cluster, a database user, and copy the connection string (add the database name, e.g. `.../saarthix`).
-2. _Network Access_: allow your host. On Render/Railway free plans outbound IPs change, so most people allow `0.0.0.0/0` and rely on the strong DB password.
+2. *Network Access*: allow your host. On Render/Railway free plans outbound IPs change, so most people allow `0.0.0.0/0` and rely on the strong DB password.
 
 ### 2. Backend — Render (Railway is similar)
-
 - **Root directory:** `server` · **Build:** `npm install` · **Start:** `npm start` · **Health check path:** `/api/health`
 - **Environment:** `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, `CLIENT_ORIGIN` (set after step 3), `EMAIL_*`, `APP_TIMEZONE`, optionally `CRON_SECRET`.
 - Deploy, then open `https://<your-api>/api/health`.
 
 ### 3. Frontend — Vercel (Netlify is similar)
-
 - **Root directory:** `client` · **Build:** `npm run build` · **Output:** `dist`
 - **Environment:** `VITE_API_URL=https://<your-api>/api` (must be set **before** building)
 - Page refreshes on deep links work because `client/vercel.json` and `client/public/_redirects` rewrite everything to `index.html`.
 - Go back to the backend and set `CLIENT_ORIGIN` to the exact frontend URL (no trailing slash), then redeploy the backend.
 
 ### 4. Create the admin account (once)
-
 From your laptop, pointing at the production database:
 
 ```bash
@@ -308,7 +300,6 @@ NODE_ENV=production MONGO_URI="<atlas-uri>" ADMIN_EMAIL="you@example.com" ADMIN_
 ```
 
 ### 5. Reminders on a free plan that sleeps
-
 Free web services can sleep when idle, and a sleeping server cannot run its timer. Set `CRON_SECRET` on the backend and make an external scheduler (e.g. cron-job.org, UptimeRobot) send this request **every minute**:
 
 ```
@@ -319,18 +310,15 @@ Header: x-cron-secret: <CRON_SECRET>
 It also keeps the server awake. On a paid / always-on plan the built-in scheduler is enough.
 
 ### 6. Existing data? Run these once
-
 ```bash
 cd server
 node scripts/checkLifecycleConsistency.js            # reports problems, builds the unique session index
 node scripts/migrateSessionScheduledAt.js            # dry run
 node scripts/migrateSessionScheduledAt.js --apply    # backfill scheduledAt for old sessions
 ```
-
 New databases don't need this.
 
 ### 7. Smoke test after deploy
-
 1. `/api/health` returns `success: true`.
 2. Register a student and an alumni; verify the alumni in the Admin panel.
 3. Student requests → alumni accepts → alumni schedules a session ~10 minutes ahead with a Meet link.
@@ -349,7 +337,7 @@ cd server && npm test      # integration suite — needs MongoDB in MONGO_URI
 > ⚠️ The server suite creates and then deletes its own `test_qa_…@example.com` users, but it runs against the database in `MONGO_URI` — **use a development database, never production.**
 > Emails are always mocked in tests; no real email is sent.
 
-**Postman:** import `docs/postman/SaarthiX.postman_collection.json`, set the collection variables (`baseUrl`, `adminEmail`, `adminPassword`, `cronSecret`) and use _Run collection_ — 43 requests with assertions covering the whole request → schedule → reminder flow.
+**Postman:** import `docs/postman/SaarthiX.postman_collection.json`, set the collection variables (`baseUrl`, `adminEmail`, `adminPassword`, `cronSecret`) and use *Run collection* — 43 requests with assertions covering the whole request → schedule → reminder flow.
 
 **Clean up test data:** the Postman run and the test suite leave dummy users (`pm_*@example.com`, `test_qa_*@example.com`) behind. Remove them with `cd server && node scripts/cleanupTestData.js` (dry run) and then `node scripts/cleanupTestData.js --apply`. It only matches those email patterns, never deletes admins or real users, and also removes their requests, sessions, reminders and notifications.
 
