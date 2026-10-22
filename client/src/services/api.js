@@ -79,6 +79,23 @@ export const adminAPI = {
 };
 
 // ════════════════════════════════════════════════════════════════
+// Uploads (profile photo → Cloudinary via our server)
+// ════════════════════════════════════════════════════════════════
+export const uploadAPI = {
+  // NOTE: the multipart Content-Type header is required here — the instance default is JSON,
+  // and axios would otherwise turn the FormData into JSON.
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return API.post("/upload/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 60000, // photos can be slow on mobile data
+    });
+  },
+  removeAvatar: () => API.delete("/upload/avatar"),
+};
+
+// ════════════════════════════════════════════════════════════════
 // Posts
 // ════════════════════════════════════════════════════════════════
 export const postsAPI = {
