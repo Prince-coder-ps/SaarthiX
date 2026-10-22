@@ -22,7 +22,7 @@ import { formatDate } from "../utils/helpers";
 import Navbar from "../components/Navbar";
 import Loader from "../components/Loader";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 15;
 const FETCH_LIMIT = 100; // backend caps /admin/users at 100 per request
 
 // ─────────────────────────────────────────────────────────────
