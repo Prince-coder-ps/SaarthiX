@@ -17,6 +17,7 @@ const sanitizeUser = (user) => ({
   domain: user.domain,
   company: user.company,
   bio: user.bio,
+  avatarUrl: user.avatarUrl,
   isVerified: user.isVerified,
   createdAt: user.createdAt,
 });
@@ -138,7 +139,7 @@ exports.getMe = async (req, res, next) => {
 
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, batch, domain, company, bio, avatarUrl } = req.body;
+    const { name, batch, domain, company, bio } = req.body; // avatarUrl is set ONLY via POST /api/upload/avatar
 
     if (name !== undefined && (typeof name !== "string" || !name.trim())) {
       return res.status(400).json({ success: false, message: "Name cannot be empty." });
@@ -150,7 +151,6 @@ exports.updateProfile = async (req, res, next) => {
     if (domain !== undefined) updates.domain = typeof domain === "string" && domain.trim() ? domain.trim() : null;
     if (company !== undefined) updates.company = typeof company === "string" && company.trim() ? company.trim() : null;
     if (bio !== undefined) updates.bio = typeof bio === "string" && bio.trim() ? bio.trim() : null;
-    if (avatarUrl !== undefined) updates.avatarUrl = typeof avatarUrl === "string" && avatarUrl.trim() ? avatarUrl.trim() : null;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -167,3 +167,5 @@ exports.updateProfile = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.sanitizeUser = sanitizeUser;

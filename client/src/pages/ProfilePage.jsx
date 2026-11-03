@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Mail, Loader2, ShieldCheck, Clock } from "lucide-react";
+import { Mail, Loader2, ShieldCheck, Clock, Camera } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { authAPI } from "../services/api";
+import { authAPI, uploadAPI } from "../services/api";
 import Navbar from "../components/Navbar";
+import Avatar from "../components/Avatar";
 import Loader from "../components/Loader";
 
 // ─────────────────────────────────────────────────────────────
@@ -17,24 +18,11 @@ const ROLE_CONFIG = {
     hint: "Complete your profile so alumni know who they are mentoring.",
     completion: ["name", "batch", "domain", "bio"],
     fields: [
+      { name: "batch",  label: "Batch / Passing Year", placeholder: "e.g. 2027", half: true },
+      { name: "domain", label: "Branch / Course",      placeholder: "e.g. Computer Science", half: true },
       {
-        name: "batch",
-        label: "Batch / Passing Year",
-        placeholder: "e.g. 2027",
-        half: true,
-      },
-      {
-        name: "domain",
-        label: "Branch / Course",
-        placeholder: "e.g. Computer Science",
-        half: true,
-      },
-      {
-        name: "bio",
-        label: "About Me",
-        type: "textarea",
-        placeholder:
-          "Tell alumni about your interests, goals and the kind of guidance you are looking for…",
+        name: "bio", label: "About Me", type: "textarea",
+        placeholder: "Tell alumni about your interests, goals and the kind of guidance you are looking for…",
       },
     ],
   },
@@ -43,27 +31,11 @@ const ROLE_CONFIG = {
     hint: "Complete your profile to be visible to more students.",
     completion: ["name", "batch", "domain", "company", "bio"],
     fields: [
+      { name: "batch",   label: "Graduation Year",            placeholder: "e.g. 2020", half: true },
+      { name: "domain",  label: "Domain / Expertise",         placeholder: "e.g. Software Engineering", half: true },
+      { name: "company", label: "Current Company / Organisation", placeholder: "e.g. Google, Infosys, Startup" },
       {
-        name: "batch",
-        label: "Graduation Year",
-        placeholder: "e.g. 2020",
-        half: true,
-      },
-      {
-        name: "domain",
-        label: "Domain / Expertise",
-        placeholder: "e.g. Software Engineering",
-        half: true,
-      },
-      {
-        name: "company",
-        label: "Current Company / Organisation",
-        placeholder: "e.g. Google, Infosys, Startup",
-      },
-      {
-        name: "bio",
-        label: "About Me",
-        type: "textarea",
+        name: "bio", label: "About Me", type: "textarea",
         placeholder: "Share your journey and the kind of mentorship you offer…",
       },
     ],
@@ -77,20 +49,26 @@ const ROLE_CONFIG = {
 };
 
 const BIO_MAX = 500;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB — same limit as the server
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const INPUT_CLASS =
   "w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
 const buildValues = (user, fieldNames) => {
   const v = { name: user?.name || "" };
-  fieldNames.forEach((f) => {
-    v[f] = user?.[f] || "";
-  });
+  fieldNames.forEach((f) => { v[f] = user?.[f] || ""; });
   return v;
 };
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
   const [saving, setSaving] = useState(false);
+
+  // profile photo
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving]   = useState(false);
+  const [preview, setPreview]     = useState(null); // local preview while uploading
 
   const config = ROLE_CONFIG[user?.role] || ROLE_CONFIG.student;
   const fieldNames = useMemo(() => config.fields.map((f) => f.name), [config]);
@@ -107,26 +85,70 @@ export default function ProfilePage() {
   if (isLoading) return <Loader fullScreen />;
   if (!isAuthenticated) return <Navigate to="/" replace />;
 
-  const isAdmin = user.role === "admin";
-  const isAlumni = user.role === "alumni";
-  const nameOk = values.name.trim().length > 0;
+  const isAdmin   = user.role === "admin";
+  const isAlumni  = user.role === "alumni";
+  const nameOk    = values.name.trim().length > 0;
 
   // Live profile completion (updates while typing)
   const completionPct = config.completion.length
     ? Math.round(
-        (config.completion.filter((k) => String(values[k] || "").trim())
-          .length /
-          config.completion.length) *
-          100,
+        (config.completion.filter((k) => String(values[k] || "").trim()).length /
+          config.completion.length) * 100
       )
     : 0;
 
   // Has anything changed compared to what is saved?
   const isDirty = ["name", ...fieldNames].some(
-    (k) => String(values[k] || "").trim() !== String(user[k] || "").trim(),
+    (k) => String(values[k] || "").trim() !== String(user[k] || "").trim()
   );
 
   const setValue = (key, val) => setValues((prev) => ({ ...prev, [key]: val }));
+
+  // ── Profile photo ────────────────────────────────────────
+  const pickPhoto = () => fileRef.current?.click();
+
+  const handleFilePick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // lets the same file be chosen again later
+    if (!file) return;
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      toast.error("Please choose a JPG, PNG or WebP image.");
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error("Image must be 2 MB or smaller.");
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    setPreview(localUrl);          // show the new photo straight away
+    setUploading(true);
+    try {
+      await uploadAPI.uploadAvatar(file);
+      await refreshProfile();
+      toast.success("Profile photo updated!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not upload the photo. Please try again.");
+    } finally {
+      setUploading(false);
+      setPreview(null);
+      URL.revokeObjectURL(localUrl);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setRemoving(true);
+    try {
+      await uploadAPI.removeAvatar();
+      await refreshProfile();
+      toast.success("Profile photo removed.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not remove the photo.");
+    } finally {
+      setRemoving(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -138,9 +160,7 @@ export default function ProfilePage() {
 
     // Only send fields this role actually has
     const payload = { name: values.name.trim() };
-    fieldNames.forEach((f) => {
-      payload[f] = values[f].trim() || null;
-    });
+    fieldNames.forEach((f) => { payload[f] = values[f].trim() || null; });
 
     try {
       await authAPI.updateProfile(payload);
@@ -158,10 +178,33 @@ export default function ProfilePage() {
       <Navbar />
 
       <div className="flex-1 container mx-auto px-4 py-8 max-w-2xl">
+
         {/* Avatar card */}
         <div className="dashboard-card text-center mb-6">
-          <div className="h-20 w-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold mx-auto mb-4">
-            {(user.name || "U").charAt(0).toUpperCase()}
+          <div className="relative h-24 w-24 mx-auto mb-4">
+            <Avatar src={preview || user.avatarUrl} name={user.name} size={96} />
+            {uploading && (
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={pickPhoto}
+              disabled={uploading || removing}
+              className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-card border border-border shadow flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-50"
+              aria-label="Change profile photo"
+              title="Change photo"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleFilePick}
+            />
           </div>
           <h1 className="text-xl font-bold">{user.name || "User"}</h1>
           <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
@@ -175,11 +218,33 @@ export default function ProfilePage() {
             )}
           </div>
 
+          <div className="flex items-center justify-center gap-3 mt-3 text-xs">
+            <button
+              type="button"
+              onClick={pickPhoto}
+              disabled={uploading || removing}
+              className="text-primary hover:underline disabled:opacity-50"
+            >
+              {user.avatarUrl ? "Change photo" : "Upload photo"}
+            </button>
+            {user.avatarUrl && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                disabled={uploading || removing}
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
+              >
+                {removing && <Loader2 className="h-3 w-3 animate-spin" />}
+                Remove
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">JPG, PNG or WebP · max 2 MB</p>
+
           {/* Admin: short description instead of a completion bar */}
           {isAdmin && (
             <p className="text-sm text-muted-foreground mt-4 max-w-sm mx-auto">
-              Administrator account. You manage users, alumni verification and
-              platform activity.
+              Administrator account. You manage users, alumni verification and platform activity.
             </p>
           )}
 
@@ -197,9 +262,7 @@ export default function ProfilePage() {
                 />
               </div>
               {completionPct < 100 && (
-                <p className="text-xs text-muted-foreground mt-1 text-center">
-                  {config.hint}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1 text-center">{config.hint}</p>
               )}
             </div>
           )}
@@ -210,17 +273,15 @@ export default function ProfilePage() {
           <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 mb-6">
             <Clock className="h-4 w-4 text-yellow-700 mt-0.5 shrink-0" />
             <p className="text-sm text-yellow-800">
-              Your account is pending verification. Once an admin verifies you,
-              students can find you and send mentorship requests.
+              Your account is pending verification. Once an admin verifies you, students can find
+              you and send mentorship requests.
             </p>
           </div>
         )}
 
         {/* Edit form */}
         <form onSubmit={handleSave} className="dashboard-card space-y-5">
-          <h2 className="font-semibold text-base">
-            {isAdmin ? "Account Details" : `Edit ${config.heading}`}
-          </h2>
+          <h2 className="font-semibold text-base">{isAdmin ? "Account Details" : `Edit ${config.heading}`}</h2>
 
           <div>
             <label className="text-sm font-medium block mb-1">
@@ -248,9 +309,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {config.fields.map((f) => (
                 <div key={f.name} className={f.half ? "" : "sm:col-span-2"}>
-                  <label className="text-sm font-medium block mb-1">
-                    {f.label}
-                  </label>
+                  <label className="text-sm font-medium block mb-1">{f.label}</label>
                   {f.type === "textarea" ? (
                     <>
                       <textarea
@@ -284,11 +343,7 @@ export default function ProfilePage() {
             className="w-full btn-primary py-2.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving
-              ? "Saving…"
-              : isDirty
-                ? "Save Changes"
-                : "No changes to save"}
+            {saving ? "Saving…" : isDirty ? "Save Changes" : "No changes to save"}
           </button>
         </form>
       </div>

@@ -1,25 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Users,
-  UserCheck,
-  Activity,
-  ShieldCheck,
-  CheckCircle,
-  Trash2,
-  Loader2,
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
+  Users, UserCheck, Activity, ShieldCheck,
+  CheckCircle, Trash2, Loader2, Search, X,
+  ChevronLeft, ChevronRight, AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { adminAPI } from "../services/api";
@@ -27,23 +13,14 @@ import { formatDate } from "../utils/helpers";
 import Navbar from "../components/Navbar";
 import Loader from "../components/Loader";
 
-const PAGE_SIZE = 10; // users per page (fetched from the server one page at a time)
-const QUEUE_LIMIT = 20; // max pending alumni shown in the verification queue
-const SEARCH_DEBOUNCE_MS = 350; // wait for the admin to stop typing before searching
+const PAGE_SIZE = 10;            // users per page (fetched from the server one page at a time)
+const QUEUE_LIMIT = 20;          // max pending alumni shown in the verification queue
+const SEARCH_DEBOUNCE_MS = 350;  // wait for the admin to stop typing before searching
 
 // ─────────────────────────────────────────────────────────────
 // Small reusable pieces
 // ─────────────────────────────────────────────────────────────
-function ConfirmDialog({
-  open,
-  title,
-  message,
-  confirmLabel,
-  danger,
-  loading,
-  onConfirm,
-  onCancel,
-}) {
+function ConfirmDialog({ open, title, message, confirmLabel, danger, loading, onConfirm, onCancel }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && !loading && onCancel();
@@ -67,9 +44,7 @@ function ConfirmDialog({
         <div className="flex items-start gap-3">
           <div
             className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
-              danger
-                ? "bg-red-50 text-destructive"
-                : "bg-yellow-50 text-yellow-600"
+              danger ? "bg-red-50 text-destructive" : "bg-yellow-50 text-yellow-600"
             }`}
           >
             <AlertTriangle className="h-5 w-5" />
@@ -109,16 +84,14 @@ function ConfirmDialog({
 }
 
 const ROLE_BADGE = {
-  admin: "bg-purple-100 text-purple-800 border-purple-300",
-  alumni: "bg-blue-100 text-blue-800 border-blue-300",
+  admin:   "bg-purple-100 text-purple-800 border-purple-300",
+  alumni:  "bg-blue-100 text-blue-800 border-blue-300",
   student: "bg-gray-100 text-gray-700 border-gray-300",
 };
 
 function RoleBadge({ role }) {
   return (
-    <span
-      className={`text-xs px-2 py-0.5 rounded-full border capitalize ${ROLE_BADGE[role] || ""}`}
-    >
+    <span className={`text-xs px-2 py-0.5 rounded-full border capitalize ${ROLE_BADGE[role] || ""}`}>
       {role}
     </span>
   );
@@ -151,10 +124,7 @@ function SkeletonRows({ rows = 4, cols = 6 }) {
     <tr key={r} className="border-b border-border/50">
       {Array.from({ length: cols }).map((__, c) => (
         <td key={c} className="py-3 pr-4">
-          <div
-            className="h-4 rounded bg-muted animate-pulse"
-            style={{ width: c === 0 ? "70%" : "50%" }}
-          />
+          <div className="h-4 rounded bg-muted animate-pulse" style={{ width: c === 0 ? "70%" : "50%" }} />
         </td>
       ))}
     </tr>
@@ -169,12 +139,12 @@ export default function AdminPanel() {
   const queryClient = useQueryClient();
 
   // filters / pagination / confirm dialog
-  const [search, setSearch] = useState("");
+  const [search, setSearch]             = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all"); // all | student | alumni | admin
-  const [statusFilter, setStatusFilter] = useState("all"); // all | verified | pending (alumni only)
-  const [page, setPage] = useState(1);
-  const [confirm, setConfirm] = useState(null); // { type: "delete" | "revoke", target }
+  const [roleFilter, setRoleFilter]     = useState("all");     // all | student | alumni | admin
+  const [statusFilter, setStatusFilter] = useState("all");     // all | verified | pending (alumni only)
+  const [page, setPage]                 = useState(1);
+  const [confirm, setConfirm]           = useState(null);      // { type: "delete" | "revoke", target }
 
   const queueRef = useRef(null);
   const usersRef = useRef(null);
@@ -193,10 +163,7 @@ export default function AdminPanel() {
   // ========= Data fetching ========= //
   // All Users table — the server does the search / filter / pagination
   const usersQuery = useQuery({
-    queryKey: [
-      "admin-users",
-      { page, roleFilter, statusFilter, q: debouncedSearch },
-    ],
+    queryKey: ["admin-users", { page, roleFilter, statusFilter, q: debouncedSearch }],
     enabled: isAdmin,
     placeholderData: keepPreviousData, // keep showing the old page while the next one loads
     queryFn: () =>
@@ -205,10 +172,7 @@ export default function AdminPanel() {
           page,
           limit: PAGE_SIZE,
           ...(roleFilter !== "all" && { role: roleFilter }),
-          ...(roleFilter === "alumni" &&
-            statusFilter !== "all" && {
-              verified: statusFilter === "verified",
-            }),
+          ...(roleFilter === "alumni" && statusFilter !== "all" && { verified: statusFilter === "verified" }),
           ...(debouncedSearch && { search: debouncedSearch }),
         })
         .then((r) => r.data),
@@ -230,16 +194,15 @@ export default function AdminPanel() {
     queryFn: () => adminAPI.getStats().then((r) => r.data.stats),
   });
 
-  const users = usersQuery.data?.users ?? [];
-  const total = usersQuery.data?.total ?? 0;
-  const totalPages = Math.max(1, usersQuery.data?.totalPages ?? 1);
+  const users        = usersQuery.data?.users ?? [];
+  const total        = usersQuery.data?.total ?? 0;
+  const totalPages   = Math.max(1, usersQuery.data?.totalPages ?? 1);
   const usersLoading = usersQuery.isLoading;
-  const refetching = usersQuery.isFetching && usersQuery.isPlaceholderData;
+  const refetching   = usersQuery.isFetching && usersQuery.isPlaceholderData;
 
-  const unverified = queueQuery.data?.users ?? [];
-  const queueLoading = queueQuery.isLoading;
-  const pendingTotal =
-    stats.pendingVerifications ?? queueQuery.data?.total ?? 0;
+  const unverified    = queueQuery.data?.users ?? [];
+  const queueLoading  = queueQuery.isLoading;
+  const pendingTotal  = stats.pendingVerifications ?? queueQuery.data?.total ?? 0;
 
   // If the last user on the last page is deleted, step back to the previous page
   useEffect(() => {
@@ -266,20 +229,17 @@ export default function AdminPanel() {
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       toast.success("User deleted.");
     },
-    onError: (err) =>
-      toast.error(err.response?.data?.message || "Failed to delete."),
+    onError: (err) => toast.error(err.response?.data?.message || "Failed to delete."),
   });
 
   // which row is currently being updated (to show a spinner on just that row)
   const busyId = verifyMutation.isPending
     ? verifyMutation.variables?.userId
     : deleteMutation.isPending
-      ? deleteMutation.variables
-      : null;
+    ? deleteMutation.variables
+    : null;
 
-  const confirmLoading =
-    deleteMutation.isPending ||
-    (verifyMutation.isPending && confirm?.type === "revoke");
+  const confirmLoading = deleteMutation.isPending || (verifyMutation.isPending && confirm?.type === "revoke");
 
   const runConfirm = () => {
     if (!confirm) return;
@@ -287,10 +247,7 @@ export default function AdminPanel() {
     if (type === "delete") {
       deleteMutation.mutate(target._id, { onSettled: () => setConfirm(null) });
     } else {
-      verifyMutation.mutate(
-        { userId: target._id, verify: false },
-        { onSettled: () => setConfirm(null) },
-      );
+      verifyMutation.mutate({ userId: target._id, verify: false }, { onSettled: () => setConfirm(null) });
     }
   };
 
@@ -303,79 +260,42 @@ export default function AdminPanel() {
   };
 
   const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const lastShown = Math.min(page * PAGE_SIZE, total);
+  const lastShown  = Math.min(page * PAGE_SIZE, total);
 
   const filtersActive = search.trim() !== "" || roleFilter !== "all";
 
   // ======== Filter helpers ========= //
-  const changeRole = (r) => {
-    setRoleFilter(r);
-    setStatusFilter("all");
-    setPage(1);
-  };
-  const changeStatus = (s) => {
-    setStatusFilter(s);
-    setPage(1);
-  };
+  const changeRole = (r) => { setRoleFilter(r); setStatusFilter("all"); setPage(1); };
+  const changeStatus = (s) => { setStatusFilter(s); setPage(1); };
   const changeSearch = (v) => setSearch(v);
-  const clearFilters = () => {
-    setSearch("");
-    setDebouncedSearch("");
-    setRoleFilter("all");
-    setStatusFilter("all");
-    setPage(1);
-  };
+  const clearFilters = () => { setSearch(""); setDebouncedSearch(""); setRoleFilter("all"); setStatusFilter("all"); setPage(1); };
 
-  const scrollTo = (ref) =>
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollTo = (ref) => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // ======== Guards (after all hooks) ========= //
   if (isLoading) return <Loader fullScreen />;
-  if (!isAuthenticated || user?.role !== "admin")
-    return <Navigate to="/" replace />;
+  if (!isAuthenticated || user?.role !== "admin") return <Navigate to="/" replace />;
 
   // ======== Stat cards (clickable ones jump to the relevant section) ========= //
   const statCards = [
     {
-      icon: Users,
-      label: "Total Users",
-      value: stats.totalUsers ?? 0,
-      color: "text-primary",
-      bg: "bg-primary/10",
-      onClick: () => {
-        clearFilters();
-        scrollTo(usersRef);
-      },
+      icon: Users, label: "Total Users", value: stats.totalUsers ?? 0,
+      color: "text-primary", bg: "bg-primary/10",
+      onClick: () => { clearFilters(); scrollTo(usersRef); },
     },
     {
-      icon: UserCheck,
-      label: "Verified Alumni",
-      value: stats.verifiedAlumni ?? 0,
-      color: "text-green-600",
-      bg: "bg-green-50",
-      onClick: () => {
-        setSearch("");
-        setDebouncedSearch("");
-        setRoleFilter("alumni");
-        setStatusFilter("verified");
-        setPage(1);
-        scrollTo(usersRef);
-      },
+      icon: UserCheck, label: "Verified Alumni", value: stats.verifiedAlumni ?? 0,
+      color: "text-green-600", bg: "bg-green-50",
+      onClick: () => { setSearch(""); setDebouncedSearch(""); setRoleFilter("alumni"); setStatusFilter("verified"); setPage(1); scrollTo(usersRef); },
     },
     {
-      icon: ShieldCheck,
-      label: "Pending Verifications",
-      value: stats.pendingVerifications ?? 0,
-      color: "text-yellow-600",
-      bg: "bg-yellow-50",
+      icon: ShieldCheck, label: "Pending Verifications", value: stats.pendingVerifications ?? 0,
+      color: "text-yellow-600", bg: "bg-yellow-50",
       onClick: () => scrollTo(queueRef),
     },
     {
-      icon: Activity,
-      label: "Mentorship Requests",
-      value: stats.totalRequests ?? 0,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
+      icon: Activity, label: "Mentorship Requests", value: stats.totalRequests ?? 0,
+      color: "text-blue-600", bg: "bg-blue-50",
       onClick: null, // no dedicated page yet
     },
   ];
@@ -404,9 +324,7 @@ export default function AdminPanel() {
           {statCards.map((c) => {
             const inner = (
               <>
-                <div
-                  className={`h-11 w-11 rounded-lg ${c.bg} flex items-center justify-center shrink-0`}
-                >
+                <div className={`h-11 w-11 rounded-lg ${c.bg} flex items-center justify-center shrink-0`}>
                   <c.icon className={`h-5 w-5 ${c.color}`} />
                 </div>
                 <div className="text-left">
@@ -425,10 +343,7 @@ export default function AdminPanel() {
                 {inner}
               </button>
             ) : (
-              <div
-                key={c.label}
-                className="dashboard-card flex items-center gap-4"
-              >
+              <div key={c.label} className="dashboard-card flex items-center gap-4">
                 {inner}
               </div>
             );
@@ -460,19 +375,8 @@ export default function AdminPanel() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    {[
-                      "Name",
-                      "Email",
-                      "Batch",
-                      "Company",
-                      "Domain",
-                      "Joined",
-                      "Actions",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap"
-                      >
+                    {["Name", "Email", "Batch", "Company", "Domain", "Joined", "Actions"].map((h) => (
+                      <th key={h} className="pb-3 pr-4 font-medium text-muted-foreground whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -482,16 +386,9 @@ export default function AdminPanel() {
                   {unverified.map((v) => {
                     const busy = busyId === v._id;
                     return (
-                      <tr
-                        key={v._id}
-                        className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="py-3 pr-4 font-medium">
-                          {v.name || "—"}
-                        </td>
-                        <td className="py-3 pr-4 text-muted-foreground text-xs">
-                          {v.email}
-                        </td>
+                      <tr key={v._id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                        <td className="py-3 pr-4 font-medium">{v.name || "—"}</td>
+                        <td className="py-3 pr-4 text-muted-foreground text-xs">{v.email}</td>
                         <td className="py-3 pr-4">{v.batch || "—"}</td>
                         <td className="py-3 pr-4">{v.company || "—"}</td>
                         <td className="py-3 pr-4">{v.domain || "—"}</td>
@@ -502,16 +399,8 @@ export default function AdminPanel() {
                           <div className="flex items-center gap-1.5">
                             <button
                               className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1"
-                              onClick={() =>
-                                verifyMutation.mutate({
-                                  userId: v._id,
-                                  verify: true,
-                                })
-                              }
-                              disabled={
-                                verifyMutation.isPending ||
-                                deleteMutation.isPending
-                              }
+                              onClick={() => verifyMutation.mutate({ userId: v._id, verify: true })}
+                              disabled={verifyMutation.isPending || deleteMutation.isPending}
                             >
                               {busy && verifyMutation.isPending ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -522,13 +411,8 @@ export default function AdminPanel() {
                             </button>
                             <button
                               className="text-xs py-1 px-2 text-destructive border border-destructive/30 rounded-md hover:bg-destructive/5 transition-colors disabled:opacity-50"
-                              onClick={() =>
-                                setConfirm({ type: "delete", target: v })
-                              }
-                              disabled={
-                                verifyMutation.isPending ||
-                                deleteMutation.isPending
-                              }
+                              onClick={() => setConfirm({ type: "delete", target: v })}
+                              disabled={verifyMutation.isPending || deleteMutation.isPending}
                               title="Delete user"
                               aria-label={`Delete ${v.name || "user"}`}
                             >
@@ -548,11 +432,8 @@ export default function AdminPanel() {
                     type="button"
                     className="text-primary hover:underline"
                     onClick={() => {
-                      setSearch("");
-                      setDebouncedSearch("");
-                      setRoleFilter("alumni");
-                      setStatusFilter("pending");
-                      setPage(1);
+                      setSearch(""); setDebouncedSearch("");
+                      setRoleFilter("alumni"); setStatusFilter("pending"); setPage(1);
                       scrollTo(usersRef);
                     }}
                   >
@@ -569,8 +450,7 @@ export default function AdminPanel() {
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-4">
             <h2 className="font-semibold">All Users</h2>
             <span className="text-xs text-muted-foreground">
-              {counts.student} students · {counts.alumni} alumni ·{" "}
-              {counts.admin} admin
+              {counts.student} students · {counts.alumni} alumni · {counts.admin} admin
             </span>
           </div>
 
@@ -608,8 +488,7 @@ export default function AdminPanel() {
                       : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  {t.label}{" "}
-                  <span className="opacity-70">({counts[t.key]})</span>
+                  {t.label} <span className="opacity-70">({counts[t.key]})</span>
                 </button>
               ))}
 
@@ -649,22 +528,15 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          <div
-            className={`overflow-x-auto transition-opacity ${refetching ? "opacity-60" : ""}`}
-          >
+          <div className={`overflow-x-auto transition-opacity ${refetching ? "opacity-60" : ""}`}>
             <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-border text-left">
-                  {["User", "Role", "Status", "Batch", "Joined", "Actions"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="pb-3 pr-4 font-medium text-muted-foreground"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {["User", "Role", "Status", "Batch", "Joined", "Actions"].map((h) => (
+                    <th key={h} className="pb-3 pr-4 font-medium text-muted-foreground">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -675,9 +547,7 @@ export default function AdminPanel() {
                     <td colSpan={6} className="py-10 text-center">
                       <Users className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">
-                        {filtersActive
-                          ? "No users match your filters."
-                          : "No users yet."}
+                        {filtersActive ? "No users match your filters." : "No users yet."}
                       </p>
                       {filtersActive && (
                         <button
@@ -695,10 +565,7 @@ export default function AdminPanel() {
                     const isSelf = u._id === user.id;
                     const busy = busyId === u._id;
                     return (
-                      <tr
-                        key={u._id}
-                        className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                      >
+                      <tr key={u._id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold shrink-0">
@@ -713,18 +580,12 @@ export default function AdminPanel() {
                                   </span>
                                 )}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {u.email}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{u.email}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 pr-4">
-                          <RoleBadge role={u.role} />
-                        </td>
-                        <td className="py-3 pr-4">
-                          <StatusBadge u={u} />
-                        </td>
+                        <td className="py-3 pr-4"><RoleBadge role={u.role} /></td>
+                        <td className="py-3 pr-4"><StatusBadge u={u} /></td>
                         <td className="py-3 pr-4">{u.batch || "—"}</td>
                         <td className="py-3 pr-4 text-muted-foreground whitespace-nowrap">
                           {formatDate(u.createdAt)}
@@ -734,33 +595,18 @@ export default function AdminPanel() {
                             {u.role === "alumni" && !u.isVerified && (
                               <button
                                 className="inline-flex items-center gap-1 text-xs text-green-700 border border-green-200 rounded px-2 py-1 hover:bg-green-50 transition-colors disabled:opacity-50"
-                                onClick={() =>
-                                  verifyMutation.mutate({
-                                    userId: u._id,
-                                    verify: true,
-                                  })
-                                }
-                                disabled={
-                                  verifyMutation.isPending ||
-                                  deleteMutation.isPending
-                                }
+                                onClick={() => verifyMutation.mutate({ userId: u._id, verify: true })}
+                                disabled={verifyMutation.isPending || deleteMutation.isPending}
                               >
-                                {busy && verifyMutation.isPending && (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                )}
+                                {busy && verifyMutation.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
                                 Verify
                               </button>
                             )}
                             {u.role === "alumni" && u.isVerified && (
                               <button
                                 className="text-xs text-yellow-700 border border-yellow-200 rounded px-2 py-1 hover:bg-yellow-50 transition-colors disabled:opacity-50"
-                                onClick={() =>
-                                  setConfirm({ type: "revoke", target: u })
-                                }
-                                disabled={
-                                  verifyMutation.isPending ||
-                                  deleteMutation.isPending
-                                }
+                                onClick={() => setConfirm({ type: "revoke", target: u })}
+                                disabled={verifyMutation.isPending || deleteMutation.isPending}
                               >
                                 Revoke
                               </button>
@@ -768,13 +614,8 @@ export default function AdminPanel() {
                             {u.role !== "admin" && (
                               <button
                                 className="text-xs text-destructive border border-destructive/30 rounded px-2 py-1 hover:bg-destructive/5 transition-colors disabled:opacity-50"
-                                onClick={() =>
-                                  setConfirm({ type: "delete", target: u })
-                                }
-                                disabled={
-                                  verifyMutation.isPending ||
-                                  deleteMutation.isPending
-                                }
+                                onClick={() => setConfirm({ type: "delete", target: u })}
+                                disabled={verifyMutation.isPending || deleteMutation.isPending}
                                 title="Delete user"
                                 aria-label={`Delete ${u.name || "user"}`}
                               >
@@ -782,9 +623,7 @@ export default function AdminPanel() {
                               </button>
                             )}
                             {u.role === "admin" && (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
                         </td>
@@ -827,6 +666,7 @@ export default function AdminPanel() {
               )}
             </div>
           )}
+
         </div>
       </div>
 
